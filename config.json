@@ -5,7 +5,7 @@
   "guild": "568662188965756969",
   "anon": {
     "maxID": 1000,
-    "maxInactiveRecords": 4,
+    "maxInactiveRecords": 1000,
     "lifetime": 432300
   }
 }

@@ -1,0 +1,11 @@
+{
+  "prefix": ">",
+  "separator": " ",
+  "pin": "\uD83D\uDCCC",
+  "guild": "568662188965756969",
+  "anon": {
+    "maxID": 1000,
+    "maxInactiveRecords": 4,
+    "lifetime": 432300
+  }
+}

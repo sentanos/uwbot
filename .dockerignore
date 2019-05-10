@@ -1,0 +1,5 @@
+node_modules/
+*.js
+.git/
+.idea/
+db/store.db

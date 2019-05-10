@@ -1,0 +1,21 @@
+{
+  "name": "uwbot",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "build": "tsc --downlevelIteration index.ts src/commands/*.ts"
+  },
+  "author": "Froast",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^11.4.2",
+    "sqlite": "^3.0.3",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^12.0.0"
+  }
+}

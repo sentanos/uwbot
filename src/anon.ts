@@ -250,6 +250,15 @@ export class Anon {
         return this.users.get(userID);
     }
 
+    public getAnonUserByAlias(alias: AnonAlias): AnonUser | void {
+        for (const anonUser of this.users.values()) {
+            if (anonUser.getAlias() === alias) {
+                return anonUser;
+            }
+        }
+        return null;
+    }
+
     public onAnonMessage(anonUser: AnonUser, message: Message) {
         this.messageRecords.addMessage(anonUser, message)
     }

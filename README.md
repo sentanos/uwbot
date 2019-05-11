@@ -1,7 +1,7 @@
-#uwbot
+# uwbot
 A bot for the UW discord, mostly for anonymous chatting.
 
-####Running with docker
+#### Running with docker
 The repository is automatically synced with a public docker repository. To use with docker, first 
 pull the repository:
 ```bash

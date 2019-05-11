@@ -1,5 +1,5 @@
 import {Availability, Command, Permission} from "../command";
-import {Message, RichEmbed, Snowflake, TextChannel} from "discord.js";
+import {Channel, Message, RichEmbed, Snowflake} from "discord.js";
 import {AnonUser} from "../anon";
 import {randomColor} from "../util";
 
@@ -8,7 +8,7 @@ export class AnonCommand extends Command {
         super(bot, {
             names: ["anon", "anonymous"],
             usages: {
-                "Send an anonymous message to the anonymous channel": []
+                "Send an anonymous message to the #anonymous channel": []
             },
             permission: Permission.None,
             availability: Availability.All
@@ -16,10 +16,67 @@ export class AnonCommand extends Command {
     }
 
     async exec(message: Message) {
-        return (await this.bot.anon.getAnonUser(message.author)).send(
-            this.bot.anon.guild.channels.find(ch => ch.name === "anonymous") as TextChannel,
-            this.bot.getRawContent(message.content)
-        )
+        return this.bot.sendAnonMessage("anonymous", message);
+    }
+}
+
+export class Relationships extends Command {
+    constructor(bot) {
+        super(bot, {
+            names: ["rel", "relationships"],
+            usages: {
+                "Send an anonymous message to the #relationships channel": []
+            },
+            permission: Permission.None,
+            availability: Availability.All
+        })
+    }
+
+    async exec(message: Message) {
+        return this.bot.sendAnonMessage("relationships", message);
+    }
+}
+
+export class Serious extends Command {
+    constructor(bot) {
+        super(bot, {
+            names: ["serious"],
+            usages: {
+                "Send an anonymous message to the #serious channel": []
+            },
+            permission: Permission.None,
+            availability: Availability.All
+        })
+    }
+
+    async exec(message: Message) {
+        return this.bot.sendAnonMessage("serious", message);
+    }
+}
+
+export class MessageCommand extends Command {
+    constructor(bot) {
+        super(bot, {
+            names: ["message"],
+            usages: {
+                "Send an anonymous message to another anonymous user": ["id", "message"]
+            },
+            permission: Permission.None,
+            availability: Availability.All
+        })
+    }
+
+    async exec(message: Message, alias: string) {
+        const id: number = parseInt(alias, 10);
+        if (isNaN(id)) {
+            throw new Error("SAFE: ID must be a number")
+        }
+        const anonUser: AnonUser | void = this.bot.anon.getAnonUserByAlias(id);
+        if (anonUser instanceof AnonUser) {
+            return this.bot.sendAnonMessage(anonUser.user.dmChannel || anonUser.user, message, 1);
+        } else {
+            throw new Error("SAFE: User not found");
+        }
     }
 }
 

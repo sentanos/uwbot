@@ -84,6 +84,18 @@ export class Command {
             throw new Error("SAFE: You do not have permission to run this command");
         }
 
+        let found = false;
+        for (const key in this.usages) {
+            const usage: string[] = this.usages[key];
+            if (args.length >= usage.length) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            throw new Error("SAFE: Invalid number of arguments for this command");
+        }
+
         return this.exec(message, ...args);
     }
 

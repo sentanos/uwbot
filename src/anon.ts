@@ -1,4 +1,12 @@
-import {Snowflake, User, Guild, TextChannel, Message, RichEmbed} from "discord.js"
+import {
+    Snowflake,
+    User,
+    Guild,
+    TextChannel,
+    Message,
+    RichEmbed,
+    TextBasedChannelFields, PartialTextBasedChannelFields
+} from "discord.js"
 import {createHash} from "crypto";
 import * as sqlite from "sqlite";
 import {generateUID, random, randomColor} from "./util";
@@ -293,19 +301,21 @@ export class AnonUser {
             // .setFooter(this.anonID)
     }
 
-    public async send(channel: TextChannel, content: string) {
-        const lastMessage: Message = (await channel.fetchMessages({ limit: 1 })).first();
-        const lastRecord: Record | void = this.anon.getLastRecord();
-        if (lastRecord instanceof Record
-            && lastRecord.messageID === lastMessage.id
-            && lastRecord.userID === this.user.id
-            && lastMessage.embeds[0].title === this.getAlias().toString()
-            && lastMessage.embeds[0].color === this.color) {
-            const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
-            Anon.onAnonUpdate(lastRecord, message);
-        } else {
-            const message = await channel.send(this.buildMessage(content)) as Message;
-            this.anon.onAnonMessage(this, message);
+    public async send(channel: TextBasedChannelFields | PartialTextBasedChannelFields, content: string) {
+        if ("fetchMessages" in channel) {
+            const lastMessage: Message = (await channel.fetchMessages({limit: 1})).first();
+            const lastRecord: Record | void = this.anon.getLastRecord();
+            if (lastRecord instanceof Record
+                && lastRecord.messageID === lastMessage.id
+                && lastRecord.userID === this.user.id
+                && lastMessage.embeds[0].title === this.getAlias().toString()
+                && lastMessage.embeds[0].color === this.color) {
+                const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
+                Anon.onAnonUpdate(lastRecord, message);
+                return
+            }
         }
+        const message = await channel.send(this.buildMessage(content)) as Message;
+        this.anon.onAnonMessage(this, message);
     }
 }

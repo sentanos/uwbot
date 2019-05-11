@@ -210,7 +210,7 @@ export class SetColor extends Command {
         const anonUser: AnonUser = await this.bot.anon.getAnonUser(message.author);
         let colorDecimal: number;
         if (color == null) {
-            anonUser.setColor(randomColor());
+            colorDecimal = randomColor();
         } else if (g == null && b == null) {
             if (color.charAt(0) === "#") {
                 color = color.substring(1);

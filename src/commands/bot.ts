@@ -1,5 +1,5 @@
 import {Availability, Command, Permission} from "../command";
-import {Message} from "discord.js";
+import {Message, RichEmbed} from "discord.js";
 
 export class Ping extends Command {
     constructor(bot) {
@@ -32,23 +32,26 @@ export class Commands extends Command {
     }
 
     async exec(message: Message, search?: string) {
-        let res = "";
+        const embed = new RichEmbed();
         if (search == null) {
+            embed.setTitle("Commands");
             this.bot.commands.forEach((command: Command) => {
-                res += command.toString() + "\n\n";
+                embed.addField(command.names.join(", "), command.toString());
             });
         } else {
             const command: Command | void = this.bot.findCommand(search);
             if (command instanceof Command) {
-                res += command.toString();
+                embed.setTitle(command.names.join(", "));
+                embed.setDescription(command.toString())
             } else {
-                res += "Error: Specified command not found";
+                throw new Error("Command not found")
             }
         }
+        embed.setColor("#00ff00");
         if (message.guild != null) {
-            return Promise.all([message.author.send(res), message.delete()]);
+            return Promise.all([message.author.send(embed), message.delete()]);
         } else {
-            return message.author.send(res);
+            return message.author.send(embed);
         }
     }
 }

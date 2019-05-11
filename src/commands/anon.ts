@@ -1,14 +1,14 @@
 import {Availability, Command, Permission} from "../command";
 import {Channel, Message, RichEmbed, Snowflake} from "discord.js";
 import {AnonUser} from "../anon";
-import {randomColor} from "../util";
+import {random, randomColor} from "../util";
 
 export class AnonCommand extends Command {
     constructor(bot) {
         super(bot, {
             names: ["anon", "anonymous"],
             usages: {
-                "Send an anonymous message to the #anonymous channel": []
+                "Send an anonymous message to the #anonymous channel": ["message"]
             },
             permission: Permission.None,
             availability: Availability.All
@@ -25,7 +25,7 @@ export class Relationships extends Command {
         super(bot, {
             names: ["rel", "relationships"],
             usages: {
-                "Send an anonymous message to the #relationships channel": []
+                "Send an anonymous message to the #relationships channel": ["message"]
             },
             permission: Permission.None,
             availability: Availability.All
@@ -42,7 +42,7 @@ export class Serious extends Command {
         super(bot, {
             names: ["serious"],
             usages: {
-                "Send an anonymous message to the #serious channel": []
+                "Send an anonymous message to the #serious channel": ["message"]
             },
             permission: Permission.None,
             availability: Availability.All

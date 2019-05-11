@@ -26,3 +26,14 @@ export const randomString = (length: number): Promise<string> => {
         })
     });
 };
+
+export const getNthIndex = (str: string, substr: string, n: number): number => {
+    let i = -1;
+
+    while (n-- && i++ < str.length) {
+        i = str.indexOf(substr, i);
+        if (i < 0) break;
+    }
+
+    return i;
+};

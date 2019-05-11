@@ -1,10 +1,21 @@
 import {Command, ParsedCommand, Permission} from "./command";
-import {Client, Guild, GuildMember, Message, MessageReaction, Snowflake, User} from "discord.js";
+import {
+    Channel,
+    Client, DMChannel,
+    Guild,
+    GuildMember,
+    Message,
+    MessageReaction, PartialTextBasedChannelFields,
+    Snowflake, TextBasedChannelFields,
+    TextChannel,
+    User
+} from "discord.js";
 import * as sqlite from "sqlite";
 import {readdir} from "fs";
 import {join} from "path";
 import {promisify} from "util";
 import {Anon} from "./anon";
+import {getNthIndex} from "./util";
 
 export type BotConfig = {
     prefix: string,
@@ -38,6 +49,23 @@ export class Bot {
         this.commands = [];
         this.anon = new Anon(DB, this.guild, config.anon.maxID,
                              config.anon.maxInactiveRecords, config.anon.lifetime);
+    }
+
+    public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,
+                                 offset: number = 0) {
+        let channel: PartialTextBasedChannelFields;
+        if (typeof channelOpt === "string") {
+            channel = this.guild.channels.find(ch => ch.name === channelOpt) as TextChannel;
+            if (channel == null) {
+                throw new Error("Channel not found")
+            }
+        } else {
+            channel = channelOpt;
+        }
+        return (await this.anon.getAnonUser(message.author)).send(
+            channel,
+            this.getRawContent(message.content, offset)
+        )
     }
 
     private addCommand(command: Command) {
@@ -170,8 +198,8 @@ export class Bot {
 
     // Given a message with a command, returns the raw content that comes after the message
     // For example: ">anon 123    456   7  " will preserve spaces correctly
-    public getRawContent(content: string): string {
-        const idx = content.indexOf(this.separator);
+    public getRawContent(content: string, offsetIndex: number = 0): string {
+        const idx = getNthIndex(content, this.separator, offsetIndex + 1);
         if (idx < 0 || idx === content.length - 1) {
             return "";
         }

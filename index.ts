@@ -4,13 +4,19 @@ import {readFileSync, existsSync} from "fs";
 import * as sqlite from "sqlite";
 
 const client = new Client();
-const configPath = "./config.json";
-const databasePath = "./db/store.db";
 const initializePath = "./db/create.sql";
 
-const token = process.env["DISCORD_TOKEN"];
+const token = process.env.DISCORD_TOKEN;
 if (token == null) {
-    throw new Error("No token provided")
+    throw new Error("No token provided");
+}
+const configPath = process.env.CONFIG_PATH;
+if (configPath == null) {
+    throw new Error("No configuration file specified");
+}
+const databasePath = process.env.DATABASE_PATH;
+if (databasePath == null) {
+    throw new Error("No database file location specified");
 }
 
 (async () => {

@@ -104,9 +104,9 @@ export class Command {
                 });
             }
             res += ": " + description;
-            if (this.names.length > 1) {
-                res += ` _aliases: [${this.names.slice(1).join(", ")}]_`;
-            }
+            // if (this.names.length > 1) {
+            //     res += ` _aliases: [${this.names.slice(1).join(", ")}]_`;
+            // }
         }
         return res;
     }

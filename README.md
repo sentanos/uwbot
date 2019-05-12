@@ -27,5 +27,5 @@ docker run -d \
 --name uwbot \
 --env-file env.list \
 --mount type=bind,source=$(pwd),target=/external \
-uwbot
+froast/uwbot
 ```

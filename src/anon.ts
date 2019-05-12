@@ -126,13 +126,13 @@ export class Anon {
 
     private randomFreeAlias(): AnonAlias {
         let alias: AnonAlias;
-        if (this.users.size > this.maxID) {
+        if (this.users.size >= this.maxID) {
             alias = this.users.size + 1;
             console.log("WARNING: IDs should be reset");
         } else {
             alias = random(this.maxID);
             while (this.aliasTaken(alias)) {
-                alias = random(this.maxID);
+                alias = (alias + 1) % this.maxID
             }
         }
         return alias;

@@ -82,3 +82,20 @@ export class WhoPinned extends Command {
         }
     }
 }
+
+export class Source extends Command {
+    constructor(bot) {
+        super(bot, {
+            names: ["source"],
+            usages: {
+                "Get a link to the bot's source code": []
+            },
+            permission: Permission.None,
+            availability: Availability.All
+        });
+    }
+
+    async exec(message: Message) {
+        message.channel.send("My source code is here: https://github.com/sentanos/uwbot");
+    }
+}

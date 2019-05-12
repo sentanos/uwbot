@@ -96,6 +96,7 @@ export class Source extends Command {
     }
 
     async exec(message: Message) {
-        message.channel.send("My source code is here: https://github.com/sentanos/uwbot");
+        message.channel.send("My source code is here: https://github.com/sentanos/uwbot\nI" +
+            " welcome contributions from anyone!");
     }
 }

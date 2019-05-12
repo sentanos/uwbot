@@ -44,7 +44,7 @@ export class Commands extends Command {
                 embed.setTitle(command.names.join(", "));
                 embed.setDescription(command.toString())
             } else {
-                throw new Error("Command not found")
+                throw new Error("SAFE: Command not found")
             }
         }
         embed.setColor("#00ff00");

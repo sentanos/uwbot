@@ -29,16 +29,18 @@ if (databasePath == null) {
         await DB.exec(commands);
     }
 
-    client.on("ready", () => {
+    client.on("ready", async () => {
         console.log("Client ready");
         const bot = new Bot(client, DB, config);
-        bot.loadCommands()
-            .then((num: number) => {
-                console.log("Loaded " + num + " commands");
-            })
-            .catch((err: Error) => {
-                console.error("Error loading commands: " + err.stack);
-            });
+        let num: number;
+        try {
+            num = await bot.loadCommands()
+        } catch (err) {
+            console.error("Error loading commands: " + err.stack);
+            return
+        }
+        console.log("Loaded " + num + " commands");
+        await bot.initializeUser();
         client.on("message", bot.onMessage.bind(bot));
         client.on("messageReactionAdd", bot.messageReactionAdd.bind(bot));
         client.on("messageReactionRemove", bot.messageReactionRemove.bind(bot));

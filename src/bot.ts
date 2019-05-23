@@ -17,9 +17,11 @@ import {Anon} from "./anon";
 import {getNthIndex} from "./util";
 
 export type BotConfig = {
+    nickname?: string,
     prefix: string,
     separator: string,
     pin: string,
+    avatarPath?: string,
     guild: Snowflake,
     anon: {
         maxID: number,
@@ -37,6 +39,8 @@ export class Bot {
     public readonly prefix: string;
     public readonly separator: string;
     public readonly pin: string;
+    public readonly avatarPath: string;
+    public readonly nickname: string;
 
     constructor(client: Client, DB: sqlite.Database, config: BotConfig) {
         this.client = client;
@@ -45,9 +49,20 @@ export class Bot {
         this.prefix = config.prefix;
         this.separator = config.separator;
         this.pin = config.pin;
+        this.avatarPath = config.avatarPath;
+        this.nickname = config.nickname;
         this.commands = [];
         this.anon = new Anon(DB, this.guild, config.anon.maxID,
                              config.anon.maxInactiveRecords, config.anon.lifetime);
+    }
+
+    public async initializeUser() {
+        if (this.nickname != null) {
+            await this.guild.member(this.client.user).setNickname(this.nickname);
+        }
+        if (this.avatarPath != null) {
+            await this.client.user.setAvatar(this.avatarPath)
+        }
     }
 
     public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,

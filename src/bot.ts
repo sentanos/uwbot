@@ -1,12 +1,11 @@
 import {Command, ParsedCommand, Permission} from "./command";
 import {
-    Channel,
-    Client, DMChannel,
+    Client,
     Guild,
     GuildMember,
     Message,
     MessageReaction, PartialTextBasedChannelFields,
-    Snowflake, TextBasedChannelFields,
+    Snowflake,
     TextChannel,
     User
 } from "discord.js";

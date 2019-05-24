@@ -150,7 +150,7 @@ export class Unblacklist extends Command {
 export class BlacklistedBy extends Command {
     constructor(bot) {
         super(bot, {
-            names: ["blacklistedby", "blacklister"],
+            names: ["blacklistedby", "blacklister", "whoblacklisted"],
             usages: {
                 "Show who blacklisted a certain user": ["blacklistId"]
             },

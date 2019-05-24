@@ -56,10 +56,10 @@ export class Commands extends Command {
     }
 }
 
-export class WhoPinned extends Command {
+export class PinnedBy extends Command {
     constructor(bot) {
         super(bot, {
-            names: ["whopinned"],
+            names: ["pinnedby", "pinner", "whopinned"],
             usages: {
                 "Show who pinned a message using the pin feature": ["messageID"]
             },

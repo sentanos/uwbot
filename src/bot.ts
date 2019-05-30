@@ -106,7 +106,7 @@ export class Bot {
 
     public findCommand(name: string): Command | void {
         return this.commands.find((command: Command) => {
-            return command.names.includes(name);
+            return command.names.includes(name.toLowerCase());
         })
     }
 
@@ -145,10 +145,6 @@ export class Bot {
             const parsed = this.parseContent(message.content);
             const command = this.findCommand(parsed.command);
             if (!(command instanceof Command)) {
-                message.reply("Command not found")
-                .catch((err: Error) => {
-                    console.error("Failed to reply: " + err.message);
-                });
                 return;
             }
             command.run(message, ...parsed.args)

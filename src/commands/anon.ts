@@ -195,7 +195,7 @@ export class Reset extends Command {
 export class SetColor extends Command {
     constructor(bot) {
         super(bot, {
-            names: ["setcolor"],
+            names: ["setcolor", "set_color"],
             usages: {
                 "Set anon color to a random color": [],
                 "Set anon color to the given hex color": ["hex"],

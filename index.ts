@@ -29,8 +29,7 @@ if (databasePath == null) {
         await DB.exec(commands);
     }
 
-    client.on("ready", async () => {
-        console.log("Client ready");
+    client.once("ready", async () => {
         const bot = new Bot(client, DB, config);
         let num: number;
         try {
@@ -45,6 +44,9 @@ if (databasePath == null) {
         client.on("messageReactionAdd", bot.messageReactionAdd.bind(bot));
         client.on("messageReactionRemove", bot.messageReactionRemove.bind(bot));
         console.log("Bot ready");
+    });
+    client.on("ready", () => {
+        console.log("Client ready");
     });
     client.on("error", (err: Error) => {
         console.error("Client error: " + err.message)

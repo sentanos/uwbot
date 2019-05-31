@@ -54,6 +54,8 @@ export class Bot {
         this.commands = [];
         this.anon = new Anon(DB, this.guild, config.anon.maxID,
                              config.anon.maxInactiveRecords, config.anon.lifetime);
+        this.getChannelByName("anonymous").send("I was restarted due to updates so IDs have been" +
+            " reset");
     }
 
     public async initializeUser() {

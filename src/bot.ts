@@ -65,14 +65,22 @@ export class Bot {
         }
     }
 
+    // Returns the channel in the bot's guild with the given name. Errors if such a channel does
+    // not exist.
+    private getChannelByName(name: string): TextChannel {
+        const channel: TextChannel | void = this.guild.channels.find(
+            ch => ch.name === name) as TextChannel;
+        if (channel == null) {
+            throw new Error("Channel not found")
+        }
+        return channel
+    }
+
     public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,
                                  offset: number = 0) {
         let channel: PartialTextBasedChannelFields;
         if (typeof channelOpt === "string") {
-            channel = this.guild.channels.find(ch => ch.name === channelOpt) as TextChannel;
-            if (channel == null) {
-                throw new Error("Channel not found")
-            }
+            channel = this.getChannelByName(channelOpt)
         } else {
             channel = channelOpt;
         }

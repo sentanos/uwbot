@@ -1,7 +1,8 @@
 import {Client} from "discord.js"
-import {Bot, BotConfig} from "./src/bot"
+import {Bot} from "./src/bot"
 import {readFileSync, existsSync} from "fs";
 import * as sqlite from "sqlite";
+import {BotConfig} from "./src/config";
 
 const client = new Client();
 const initializePath = "./db/create.sql";
@@ -31,18 +32,7 @@ if (databasePath == null) {
 
     client.once("ready", async () => {
         const bot = new Bot(client, DB, config);
-        let num: number;
-        try {
-            num = await bot.loadCommands()
-        } catch (err) {
-            console.error("Error loading commands: " + err.stack);
-            return
-        }
-        console.log("Loaded " + num + " commands");
-        await bot.initializeUser();
-        client.on("message", bot.onMessage.bind(bot));
-        client.on("messageReactionAdd", bot.messageReactionAdd.bind(bot));
-        client.on("messageReactionRemove", bot.messageReactionRemove.bind(bot));
+        await bot.initialize();
         console.log("Bot ready");
     });
     client.on("ready", () => {

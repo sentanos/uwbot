@@ -2,7 +2,6 @@ import {
     Snowflake,
     User,
     Guild,
-    TextChannel,
     Message,
     RichEmbed,
     TextBasedChannelFields, PartialTextBasedChannelFields
@@ -11,6 +10,9 @@ import {createHash} from "crypto";
 import * as sqlite from "sqlite";
 import {generateUID, random, randomColor} from "../util";
 import Queue from "../queue";
+import {Module} from "../module";
+import {Bot} from "../bot";
+import {CommandsModule} from "./commands";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -95,20 +97,24 @@ export class Record {
     }
 }
 
-export class Anon {
+export class AnonModule extends Module {
     private users: Map<Snowflake, AnonUser>;
-    readonly guild: Guild;
+    public readonly guild: Guild;
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
-    readonly maxID: number;
+    private readonly maxID: number;
     private readonly DB: sqlite.Database;
 
-    constructor(DB: sqlite.Database, guild: Guild, maxID: number, maxInactiveRecords: number, lifetime: number) {
-        this.DB = DB;
-        this.guild = guild;
+    constructor(bot: Bot) {
+        super(bot, "anon");
+        this.guild = this.bot.guild;
+        this.DB = this.bot.DB;
+        this.maxID = this.bot.config.anon.maxID;
         this.users = new Map<Snowflake, AnonUser>();
-        this.maxID = maxID;
-        this.messageRecords = new MessageRecords(maxInactiveRecords, lifetime);
+        this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
+            this.bot.config.anon.lifetime);
+        this.bot.getChannelByName("anonymous").send("I was restarted due to updates so IDs have" +
+            " been reset");
     }
 
     public reset(): void {
@@ -156,7 +162,7 @@ export class Anon {
 
     public async isBlacklisted(userID: Snowflake): Promise<boolean> {
         const res = await this.DB.get("SELECT 1 AS exist FROM blacklist WHERE hashed = ?",
-            Anon.getHash(userID));
+            AnonModule.getHash(userID));
         return res != null && res.exist === 1;
     }
 
@@ -180,7 +186,7 @@ export class Anon {
         }
         const blacklistID = generateUID();
         const add = this.DB.run("INSERT INTO blacklist(blacklistID, hashed)" +
-            " VALUES(?, ?)", blacklistID, Anon.getHash(userID));
+            " VALUES(?, ?)", blacklistID, AnonModule.getHash(userID));
         const log = this.DB.run("INSERT INTO logs(userID, modAction, target) VALUES(?, ?, ?)",
             mod.id, "blacklist", blacklistID);
         await Promise.all([add, log]);
@@ -270,16 +276,31 @@ export class Anon {
     public getLastRecord(): Record | void {
         return this.messageRecords.front();
     }
+
+    public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,
+                                 offset: number = 0) {
+        let channel: PartialTextBasedChannelFields;
+        if (typeof channelOpt === "string") {
+            channel = this.bot.getChannelByName(channelOpt)
+        } else {
+            channel = channelOpt;
+        }
+        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
+        return (await this.getAnonUser(message.author)).send(
+            channel,
+            handler.getRawContent(message.content, offset)
+        )
+    }
 }
 
 export class AnonUser {
     readonly user: User;
-    private anon: Anon;
+    private anon: AnonModule;
     // public anonID: AnonID;
     private anonAlias: AnonAlias;
     private color: number;
 
-    constructor(anon: Anon, user: User, anonAlias: AnonAlias) {
+    constructor(anon: AnonModule, user: User, anonAlias: AnonAlias) {
         this.anon = anon;
         this.user = user;
         this.anonAlias = anonAlias;
@@ -320,7 +341,7 @@ export class AnonUser {
                 && lastMessage.embeds[0].title === this.getAlias().toString()
                 && lastMessage.embeds[0].color === this.color) {
                 const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
-                Anon.onAnonUpdate(lastRecord, message);
+                AnonModule.onAnonUpdate(lastRecord, message);
                 return
             }
         }

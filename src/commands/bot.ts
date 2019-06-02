@@ -1,4 +1,4 @@
-import {Availability, Command, Permission} from "../command";
+import {Availability, Command, CommandsModule, Permission} from "../modules/commands";
 import {Message, RichEmbed} from "discord.js";
 
 export class Ping extends Command {
@@ -32,14 +32,15 @@ export class Commands extends Command {
     }
 
     async exec(message: Message, search?: string) {
-        const embed = new RichEmbed();
+        const embed: RichEmbed = new RichEmbed();
+        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         if (search == null) {
-            embed.setTitle("Commands");
-            this.bot.commands.forEach((command: Command) => {
+            embed.setTitle("Command");
+            handler.commands.forEach((command: Command) => {
                 embed.addField(command.names.join(", "), command.toString());
             });
         } else {
-            const command: Command | void = this.bot.findCommand(search);
+            const command: Command | void = handler.findCommand(search);
             if (command instanceof Command) {
                 embed.setTitle(command.names.join(", "));
                 embed.setDescription(command.toString())

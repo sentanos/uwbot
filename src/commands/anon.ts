@@ -1,9 +1,23 @@
-import {Availability, Command, Permission} from "../command";
+import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
 import {Message, RichEmbed, Snowflake} from "discord.js";
-import {AnonUser} from "../modules/anon";
+import {AnonModule, AnonUser} from "../modules/anon";
 import {randomColor} from "../util";
+import {Bot} from "../bot";
 
-export class AnonCommand extends Command {
+class RequiresAnon extends Command {
+    protected anon: AnonModule;
+
+    constructor(bot: Bot, config: CommandConfig) {
+        super(bot, config);
+    }
+
+    async run(message?: Message, ...args: string[]): Promise<any> {
+        this.anon = this.bot.getModule("anon") as AnonModule;
+        return super.run(message, ...args);
+    }
+}
+
+export class AnonCommand extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["anon", "anonymous"],
@@ -16,11 +30,11 @@ export class AnonCommand extends Command {
     }
 
     async exec(message: Message) {
-        return this.bot.sendAnonMessage("anonymous", message);
+        return this.anon.sendAnonMessage("anonymous", message);
     }
 }
 
-export class Relationships extends Command {
+export class Relationships extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["rel", "relationships"],
@@ -33,11 +47,11 @@ export class Relationships extends Command {
     }
 
     async exec(message: Message) {
-        return this.bot.sendAnonMessage("relationships", message);
+        return this.anon.sendAnonMessage("relationships", message);
     }
 }
 
-export class Serious extends Command {
+export class Serious extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["serious"],
@@ -50,11 +64,11 @@ export class Serious extends Command {
     }
 
     async exec(message: Message) {
-        return this.bot.sendAnonMessage("serious", message);
+        return this.anon.sendAnonMessage("serious", message);
     }
 }
 
-export class MessageCommand extends Command {
+export class MessageCommand extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["message"],
@@ -71,16 +85,16 @@ export class MessageCommand extends Command {
         if (isNaN(id)) {
             throw new Error("SAFE: ID must be a number")
         }
-        const anonUser: AnonUser | void = this.bot.anon.getAnonUserByAlias(id);
+        const anonUser: AnonUser | void = this.anon.getAnonUserByAlias(id);
         if (anonUser instanceof AnonUser) {
-            return this.bot.sendAnonMessage(anonUser.user.dmChannel || anonUser.user, message, 1);
+            return this.anon.sendAnonMessage(anonUser.user.dmChannel || anonUser.user, message, 1);
         } else {
             throw new Error("SAFE: User not found");
         }
     }
 }
 
-export class NewID extends Command {
+export class NewID extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["newid"],
@@ -94,21 +108,21 @@ export class NewID extends Command {
     }
 
     async exec(message: Message, customID?: string) {
-        const user = await this.bot.anon.getAnonUser(message.author);
+        const user = await this.anon.getAnonUser(message.author);
         if (customID == null) {
-            this.bot.anon.newAlias(user);
+            this.anon.newAlias(user);
         } else {
             const parsed = parseInt(customID, 10);
             if (isNaN(parsed)) {
                 throw new Error("SAFE: ID must be a number")
             }
-            this.bot.anon.setAlias(user, parsed);
+            this.anon.setAlias(user, parsed);
         }
         return message.author.send("You are now speaking under ID `" + user.getAlias() + "`");
     }
 }
 
-export class Blacklist extends Command {
+export class Blacklist extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["blacklist"],
@@ -122,13 +136,13 @@ export class Blacklist extends Command {
     }
 
     async exec(message: Message, messageID: string) {
-        const blacklistResponse = await this.bot.anon.blacklist(messageID, message.author);
+        const blacklistResponse = await this.anon.blacklist(messageID, message.author);
         return message.reply(`Blacklisted \`${blacklistResponse.anonAlias}\`.
 ID: ${blacklistResponse.blacklistID}`)
     }
 }
 
-export class Unblacklist extends Command {
+export class Unblacklist extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["unblacklist"],
@@ -142,12 +156,12 @@ export class Unblacklist extends Command {
     }
 
     async exec(message: Message, blacklistID: string) {
-        await this.bot.anon.unblacklist(blacklistID, message.author);
+        await this.anon.unblacklist(blacklistID, message.author);
         return message.reply("Unblacklisted");
     }
 }
 
-export class BlacklistedBy extends Command {
+export class BlacklistedBy extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["blacklistedby", "blacklister", "whoblacklisted"],
@@ -160,9 +174,9 @@ export class BlacklistedBy extends Command {
     }
 
     async exec(message: Message, blacklistID: string) {
-        const id: Snowflake | void = await this.bot.anon.blacklistedBy(blacklistID);
+        const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
         if (typeof id === "string") {
-            const member = await this.bot.anon.guild.fetchMember(id);
+            const member = await this.anon.guild.fetchMember(id);
             if (member == null) {
                 return message.reply(id);
             } else {
@@ -174,7 +188,7 @@ export class BlacklistedBy extends Command {
     }
 }
 
-export class Reset extends Command {
+export class Reset extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["reset"],
@@ -187,12 +201,12 @@ export class Reset extends Command {
     }
 
     async exec(message: Message) {
-        this.bot.anon.reset();
+        this.anon.reset();
         return message.reply("Reset all IDs")
     }
 }
 
-export class SetColor extends Command {
+export class SetColor extends RequiresAnon {
     constructor(bot) {
         super(bot, {
             names: ["setcolor", "set_color"],
@@ -207,7 +221,7 @@ export class SetColor extends Command {
     }
 
     async exec(message: Message, color?: string, g?: string, b?: string) {
-        const anonUser: AnonUser = await this.bot.anon.getAnonUser(message.author);
+        const anonUser: AnonUser = await this.anon.getAnonUser(message.author);
         let colorDecimal: number;
         if (color == null) {
             colorDecimal = randomColor();

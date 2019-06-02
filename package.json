@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "build": "tsc --downlevelIteration index.ts src/commands/*.ts"
+    "build": "tsc --downlevelIteration index.ts src/commands/*.ts src/modules/*.ts"
   },
   "author": "Froast",
   "license": "ISC",

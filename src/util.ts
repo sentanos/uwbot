@@ -37,3 +37,54 @@ export const getNthIndex = (str: string, substr: string, n: number): number => {
 
     return i;
 };
+
+export class Queue<T> {
+    private queue: T[];
+    private offset: number;
+
+    constructor() {
+        this.queue = [];
+        this.offset = 0;
+    }
+
+    public size(): number {
+        return this.queue.length - this.offset;
+    }
+
+    public isEmpty(): boolean {
+        return this.size() === 0;
+    }
+
+    public enqueue(item: T): void {
+        this.queue.push(item);
+    }
+
+    public dequeue(): T | void {
+        if (this.isEmpty()) {
+            return undefined;
+        }
+
+        const item: T = this.queue[this.offset];
+        this.offset++;
+        if (this.offset * 2 >= this.queue.length) {
+            this.queue = this.queue.slice(this.offset);
+            this.offset = 0;
+        }
+
+        return item;
+    }
+
+    public peek(): T | void {
+        return !this.isEmpty() ? this.queue[this.offset] : undefined;
+    }
+
+    // Yeah these are nonstandard, open to better ideas if anyone has them
+
+    public toArray(): T[] {
+        return this.queue.slice(this.offset);
+    }
+
+    public front(): T | void {
+        return !this.isEmpty() ? this.queue[this.queue.length - 1] : undefined;
+    }
+}

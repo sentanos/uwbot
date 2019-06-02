@@ -8,8 +8,7 @@ import {
 } from "discord.js"
 import {createHash} from "crypto";
 import * as sqlite from "sqlite";
-import {generateUID, random, randomColor} from "../util";
-import Queue from "../queue";
+import {generateUID, random, randomColor, Queue} from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";

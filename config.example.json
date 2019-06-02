@@ -1,13 +1,15 @@
 {
-  "nickname": "Dubs",
-  "prefix": ">",
-  "separator": " ",
-  "pin": "\uD83D\uDCCC",
   "guild": "enter_guild_id_here",
-  "avatarPath": "src/avatar.jpg",
+  "commands": {
+    "prefix": ">",
+    "separator": " "
+  },
   "anon": {
     "maxID": 1000,
     "maxInactiveRecords": 1000,
     "lifetime": 432300
+  },
+  "pin": {
+    "emoji": "\uD83D\uDCCC"
   }
 }

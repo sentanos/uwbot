@@ -13,7 +13,7 @@ import * as sqlite from "sqlite";
 import {readdir} from "fs";
 import {join} from "path";
 import {promisify} from "util";
-import {Anon} from "./anon";
+import {Anon} from "./modules/anon";
 import {getNthIndex} from "./util";
 
 export type BotConfig = {

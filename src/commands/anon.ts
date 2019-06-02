@@ -1,6 +1,6 @@
 import {Availability, Command, Permission} from "../command";
 import {Message, RichEmbed, Snowflake} from "discord.js";
-import {AnonUser} from "../anon";
+import {AnonUser} from "../modules/anon";
 import {randomColor} from "../util";
 
 export class AnonCommand extends Command {

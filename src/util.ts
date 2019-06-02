@@ -1,5 +1,5 @@
 import {randomBytes} from "crypto";
-import {AnonID} from "./anon";
+import {AnonID} from "./modules/anon";
 import * as uuid from "uuid/v4";
 
 // Returns a random integer from 0 to max

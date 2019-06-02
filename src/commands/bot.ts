@@ -1,4 +1,10 @@
-import {Availability, Command, CommandsModule, Permission} from "../modules/commands";
+import {
+    Availability,
+    Command,
+    CommandAndAlias,
+    CommandsModule,
+    Permission
+} from "../modules/commands";
 import {Message, RichEmbed} from "discord.js";
 
 export class Ping extends Command {
@@ -31,22 +37,23 @@ export class Commands extends Command {
         });
     }
 
-    async exec(message: Message, search?: string) {
+    async exec(message: Message) {
         const embed: RichEmbed = new RichEmbed();
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
-        if (search == null) {
-            embed.setTitle("Command");
+        const search = handler.getRawContent(message.content);
+        if (search === "") {
+            embed.setTitle("Commands");
             handler.commands.forEach((command: Command) => {
                 embed.addField(command.names.join(", "), command.toString());
             });
         } else {
-            const command: Command | void = handler.findCommand(search);
-            if (command instanceof Command) {
-                embed.setTitle(command.names.join(", "));
-                embed.setDescription(command.toString())
-            } else {
+            const maybe: CommandAndAlias | void = handler.findCommand(search);
+            if (maybe == null) {
                 throw new Error("SAFE: Command not found")
             }
+            const command = (maybe as CommandAndAlias).command;
+            embed.setTitle(command.names.join(", "));
+            embed.setDescription(command.toString())
         }
         embed.setColor("#00ff00");
         if (message.guild != null) {

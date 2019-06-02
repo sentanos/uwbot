@@ -5,8 +5,15 @@ import {getNthIndex} from "../util";
 import {CommandsModuleConfig} from "../config";
 
 export type ParsedCommand = {
-    command: string,
+    command: Command,
+    alias: string,
     args: string[]
+}
+
+// A command and the alias that was used to call it
+export type CommandAndAlias = {
+    command: Command,
+    alias: string
 }
 
 // Description: [Parameters]
@@ -73,18 +80,23 @@ export class CommandsModule extends Module {
         this.commands.push(command);
     }
 
-    public findCommand(name: string): Command | void {
-        return this.commands.find((command: Command) => {
-            return command.names.includes(name.toLowerCase());
-        })
-    }
-
-    public hasCommand(name: string): boolean {
-        const command = this.findCommand(name);
-        if (command instanceof Command) {
-            return true;
+    // Find the command specific in content.
+    // If mustIncludeSeparator is true, a separator must come after the command BUT ONLY if the
+    // command was not used by itself.
+    public findCommand(content: string, mustIncludeSeparator: boolean = false):
+        CommandAndAlias | void {
+        for (let i = 0; i < this.commands.length; i++) {
+            const command = this.commands[i];
+            for (let j = 0; j < command.names.length; j++) {
+                const name = command.names[j];
+                if (content.toLowerCase() === name
+                    || (!mustIncludeSeparator && content.toLowerCase().startsWith(name))
+                    || (mustIncludeSeparator
+                        && content.toLowerCase().startsWith(name + this.config.separator))) {
+                    return { command: command, alias: name }
+                }
+            }
         }
-        return false;
     }
 
     public checkPermission(user: User | GuildMember, permission: Permission): boolean {
@@ -111,12 +123,12 @@ export class CommandsModule extends Module {
         }
         if (message.content.length > this.config.prefix.length + 1 &&
                 message.content.startsWith(this.config.prefix)) {
-            const parsed = this.parseContent(message.content);
-            const command = this.findCommand(parsed.command);
-            if (!(command instanceof Command)) {
-                return;
+            const maybe: ParsedCommand | void = this.parseCommand(message.content);
+            if (maybe == null) {
+                return
             }
-            command.run(message, ...parsed.args)
+            const parsed = maybe as ParsedCommand;
+            parsed.command.run(message, ...parsed.args)
                 .catch((err: Error) => {
                     let errMsg;
                     if (err.message.startsWith("SAFE: ")) {
@@ -136,19 +148,38 @@ export class CommandsModule extends Module {
     // Given a message with a command, returns the raw content that comes after the message
     // For example: ">anon 123    456   7  " will preserve spaces correctly
     public getRawContent(content: string, offsetIndex: number = 0): string {
-        const idx = getNthIndex(content, this.config.separator, offsetIndex + 1);
-        if (idx < 0 || idx === content.length - 1) {
-            return "";
+        const maybe: CommandAndAlias | void = this.findCommand(content.substring(
+            this.config.prefix.length));
+        if (maybe == null) {
+            throw new Error("Content does not seem to contain a command");
         }
-        return content.substring(idx + 1);
+        const command = maybe as CommandAndAlias;
+        const afterCommand: string = content.substring(command.alias.length +
+            this.config.prefix.length + this.config.separator.length);
+        const idx = getNthIndex(afterCommand, this.config.separator, offsetIndex);
+        if (idx === -1) {
+            return afterCommand;
+        }
+        return afterCommand.substring(idx + this.config.separator.length);
     }
 
-    private parseContent(content: string): ParsedCommand {
-        const args = content.split(this.config.separator);
-        const command = args[0].substring(this.config.prefix.length);
+    private parseCommand(content: string): ParsedCommand | void {
+        const maybe: CommandAndAlias | void = this.findCommand(content.substring(
+            this.config.prefix.length), true);
+        if (maybe == null) {
+            return null;
+        }
+        const command = maybe as CommandAndAlias;
+        const args = content.substring(command.alias.length + this.config.prefix.length)
+            .split(this.config.separator);
         args.shift();
-        return { command, args }
+        return {
+            command: command.command,
+            alias: command.alias,
+            args: args
+        }
     }
+
 }
 
 // Represents a command

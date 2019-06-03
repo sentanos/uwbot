@@ -83,8 +83,4 @@ export class Queue<T> {
     public toArray(): T[] {
         return this.queue.slice(this.offset);
     }
-
-    public front(): T | void {
-        return !this.isEmpty() ? this.queue[this.queue.length - 1] : undefined;
-    }
 }

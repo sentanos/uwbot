@@ -12,8 +12,8 @@ export class PinModule extends Module {
         super(bot, "pin");
         this.DB = this.bot.DB;
         this.config = this.bot.config.pin;
-        this.bot.client.on("messageReactionAdd", this.messageReactionAdd.bind(this));
-        this.bot.client.on("messageReactionRemove", this.messageReactionRemove.bind(this));
+        // this.bot.client.on("messageReactionAdd", this.messageReactionAdd.bind(this));
+        // this.bot.client.on("messageReactionRemove", this.messageReactionRemove.bind(this));
     }
 
     public async messageReactionAdd(reaction: MessageReaction, user: User) {

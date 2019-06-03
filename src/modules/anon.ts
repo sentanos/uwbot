@@ -4,7 +4,7 @@ import {
     Guild,
     Message,
     RichEmbed,
-    TextBasedChannelFields, PartialTextBasedChannelFields
+    TextBasedChannelFields, PartialTextBasedChannelFields, Channel
 } from "discord.js"
 import {createHash} from "crypto";
 import * as sqlite from "sqlite";
@@ -33,13 +33,15 @@ export type BlacklistResponse = {
 
 export class MessageRecords {
     private records: Queue<Record>;
-    readonly maxInactiveRecords: number;
-    readonly lifetime: number;
+    private readonly maxInactiveRecords: number;
+    private readonly lifetime: number;
+    private lastRecords: Map<Snowflake, Record>;
 
     constructor(maxInactiveRecords: number, lifetime: number) {
         this.maxInactiveRecords = maxInactiveRecords;
         this.lifetime = lifetime;
         this.records = new Queue<Record>();
+        this.lastRecords = new Map<Snowflake, Record>();
     }
 
     private prune(): void {
@@ -55,6 +57,7 @@ export class MessageRecords {
             message.createdAt, this.lifetime);
         this.records.enqueue(record);
         this.prune();
+        this.lastRecords.set(message.channel.id, record);
     }
 
     public getRecordByID(messageID: Snowflake): Record | void {
@@ -64,11 +67,10 @@ export class MessageRecords {
         });
     }
 
-    public front(): Record | void {
-        return this.records.front();
+    public getLastRecord(channel: Snowflake): Record | void {
+        return this.lastRecords.get(channel);
     }
 }
-
 
 export class Record {
     readonly userID: Snowflake;
@@ -272,8 +274,8 @@ export class AnonModule extends Module {
         lastRecord.setTime(message.createdAt);
     }
 
-    public getLastRecord(): Record | void {
-        return this.messageRecords.front();
+    public getLastRecord(channel: Snowflake): Record | void {
+        return this.messageRecords.getLastRecord(channel)
     }
 
     public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,
@@ -333,7 +335,7 @@ export class AnonUser {
     public async send(channel: TextBasedChannelFields | PartialTextBasedChannelFields, content: string) {
         if ("fetchMessages" in channel) {
             const lastMessage: Message = (await channel.fetchMessages({limit: 1})).first();
-            const lastRecord: Record | void = this.anon.getLastRecord();
+            const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
             if (lastRecord instanceof Record
                 && lastRecord.messageID === lastMessage.id
                 && lastRecord.userID === this.user.id

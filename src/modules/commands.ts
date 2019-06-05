@@ -81,18 +81,14 @@ export class CommandsModule extends Module {
     }
 
     // Find the command specific in content.
-    // If mustIncludeSeparator is true, a separator must come after the command BUT ONLY if the
-    // command was not used by itself.
-    public findCommand(content: string, mustIncludeSeparator: boolean = false):
+    public findCommand(content: string):
         CommandAndAlias | void {
         for (let i = 0; i < this.commands.length; i++) {
             const command = this.commands[i];
             for (let j = 0; j < command.names.length; j++) {
                 const name = command.names[j];
                 if (content.toLowerCase() === name
-                    || (!mustIncludeSeparator && content.toLowerCase().startsWith(name))
-                    || (mustIncludeSeparator
-                        && content.toLowerCase().startsWith(name + this.config.separator))) {
+                    || (content.toLowerCase().startsWith(name + this.config.separator))) {
                     return { command: command, alias: name }
                 }
             }
@@ -165,7 +161,7 @@ export class CommandsModule extends Module {
 
     private parseCommand(content: string): ParsedCommand | void {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
-            this.config.prefix.length), true);
+            this.config.prefix.length));
         if (maybe == null) {
             return null;
         }

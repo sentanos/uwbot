@@ -60,7 +60,7 @@ export class CommandsModule extends Module {
         super(bot, "commands");
         this.config = this.bot.config.commands;
         this.commands = [];
-        this.bot.client.on("message", this.onMessage.bind(this))
+        this.bot.client.on("message", this.onMessage.bind(this));
     }
 
     public async initialize() {

@@ -20,6 +20,7 @@ export class Bot {
     public readonly guild: Guild;
     public readonly config: BotConfig;
     private readonly modules: Modules;
+    private readonly loaded: Set<string>;
 
     constructor(client: Client, DB: sqlite.Database, config: BotConfig) {
         this.client = client;
@@ -27,6 +28,7 @@ export class Bot {
         this.config = config;
         this.guild = client.guilds.get(config.guild);
         this.modules = {};
+        this.loaded = new Set<string>();
     }
 
     public async initialize(): Promise<void> {
@@ -49,17 +51,34 @@ export class Bot {
         this.modules[module.name] = module;
     }
 
+    // No circular dependencies!
+    private async load(module: Module): Promise<void> {
+        if (this.loaded.has(module.name)) {
+            return;
+        }
+        for (let i = 0; i < module.dependencies.length; i++) {
+            if (!this.loaded.has(module.dependencies[i])) {
+                await this.load(this.modules[module.dependencies[i]]);
+            }
+        }
+        await module.initialize();
+        this.loaded.add(module.name);
+    }
+
     public async loadModules(): Promise<number> {
-        return this.forEachClassInFile("./modules",
+        const num: number = await this.forEachClassInFile("./modules",
                 async (name: string, constructor: any): Promise<boolean> => {
             if (name.endsWith("Module")) {
                 const module: Module = new constructor(this);
-                await module.initialize();
                 this.addModule(module);
                 return true;
             }
             return false;
-        })
+        });
+        for (const module in this.modules) {
+            await this.load(this.modules[module]);
+        }
+        return num;
     }
 
     public getModule(name: string): Module {

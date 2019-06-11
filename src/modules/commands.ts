@@ -3,6 +3,7 @@ import {Bot} from "../bot";
 import {Module} from "../module";
 import {getNthIndex} from "../util";
 import {CommandsModuleConfig} from "../config";
+import {WhitelistModule} from "./whitelist";
 
 export type ParsedCommand = {
     command: Command,
@@ -36,34 +37,24 @@ export enum Permission {
 export enum Availability {
     ChatOnly,
     GuildOnly,
+    WhitelistedGuildChannelsOnly,
     All
 }
-
-export const checkAvailability = (message: Message, availability: Availability): boolean => {
-    switch(availability) {
-        case Availability.ChatOnly:
-            return message.guild == null;
-        case Availability.GuildOnly:
-            return message.guild != null;
-        case Availability.All:
-            return true;
-        default:
-            return false;
-    }
-};
 
 export class CommandsModule extends Module {
     public readonly commands: Command[];
     public readonly config: CommandsModuleConfig;
+    private whitelist: WhitelistModule;
 
     constructor(bot: Bot) {
-        super(bot, "commands");
+        super(bot, "commands", ["whitelist"]);
         this.config = this.bot.config.commands;
         this.commands = [];
         this.bot.client.on("message", this.onMessage.bind(this));
     }
 
     public async initialize() {
+        this.whitelist = this.bot.getModule("whitelist") as WhitelistModule;
         const num: number = await this.loadCommands();
         console.log("Loaded " + num + " commands");
     }
@@ -120,6 +111,25 @@ export class CommandsModule extends Module {
             }
         }
         return false;
+    };
+
+    public checkAvailability = async (message: Message, availability: Availability):
+        Promise<boolean> => {
+        switch (availability) {
+            case Availability.ChatOnly:
+                return message.guild == null;
+            case Availability.GuildOnly:
+                return message.guild != null;
+            case Availability.WhitelistedGuildChannelsOnly:
+                if (message.guild == null) {
+                    return false;
+                }
+                return this.whitelist.channels.has(message.channel.id);
+            case Availability.All:
+                return true;
+            default:
+                return false;
+        }
     };
 
     public onMessage(message: Message) {
@@ -218,17 +228,22 @@ export class Command {
             rel = user;
         }
 
-        if (!checkAvailability(message, this.availability)) {
+        if (!(await handler.checkAvailability(message, this.availability))) {
             if (this.availability === Availability.ChatOnly) {
-                throw new Error("SAFE: You may only use this command from DMs");
+                throw new Error("SAFE: You may only use that command from DMs");
             } else if (this.availability === Availability.GuildOnly) {
-                throw new Error("SAFE: You may only use this command from a guild")
+                throw new Error("SAFE: You may only use that command from a guild");
+            } else if (this.availability === Availability.WhitelistedGuildChannelsOnly) {
+                message.author.send("Error: You may only use that command from specific guild" +
+                    " channels. Use \"" + handler.config.prefix + "whitelist get\" to get a list" +
+                    " of these channels.");
+                return;
             } else {
                 throw new Error("SAFE: Command is unavailable in current context");
             }
         }
         if (!handler.checkPermission(rel, this.permission)) {
-            throw new Error("SAFE: You do not have permission to run this command");
+            throw new Error("SAFE: You do not have permission to run that command");
         }
 
         let found = false;

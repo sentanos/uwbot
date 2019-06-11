@@ -1,5 +1,5 @@
 import {Module} from "../module";
-import {MessageReaction, Snowflake, User} from "discord.js";
+import {Message, MessageReaction, Snowflake, User} from "discord.js";
 import {PinModuleConfig} from "../config";
 import {Database} from "sqlite";
 import {Bot} from "../bot";
@@ -14,6 +14,32 @@ export class PinModule extends Module {
         this.config = this.bot.config.pin;
         // this.bot.client.on("messageReactionAdd", this.messageReactionAdd.bind(this));
         // this.bot.client.on("messageReactionRemove", this.messageReactionRemove.bind(this));
+    }
+
+    // Unpin the given message. If creator is specified, make sure that the message pinner's ID
+    // matches. Otherwise, unpin no matter who the original pinner was.
+    public async unpin(message: Message, creator?: Snowflake) {
+        await this.DB.exec("BEGIN TRANSACTION");
+        try {
+            const userID: Snowflake = (await this.DB.get(
+                `SELECT userID FROM pinned WHERE messageID = ?`, message.id)).userID;
+            if (creator == null || userID === creator) {
+                if (message.reactions.get(this.config.emoji).count === 0) {
+                    await this.DB.run(`DELETE FROM pinned WHERE messageID = ?`,
+                        message.id);
+                    await message.unpin();
+                } else {
+                    const other = (await message.reactions.get(this.config.emoji)
+                        .fetchUsers(1)).first();
+                    await this.DB.run(`UPDATE pinned SET userID = ? WHERE messageID = ?`,
+                        other.id, message.id);
+                }
+            }
+            await this.DB.exec("COMMIT TRANSACTION")
+        } catch (err) {
+            console.error("Error while processing transaction, rolling back: " + err.stack);
+            await this.DB.exec("ROLLBACK TRANSACTION")
+        }
     }
 
     public async messageReactionAdd(reaction: MessageReaction, user: User) {
@@ -35,26 +61,7 @@ export class PinModule extends Module {
         if (reaction.message.guild != null
             && reaction.message.pinned
             && reaction.emoji.name === this.config.emoji) {
-            await this.DB.exec("BEGIN TRANSACTION");
-            try {
-                const userID: Snowflake = (await this.DB.get(`SELECT userID FROM pinned WHERE messageID = ?`,
-                    reaction.message.id)).userID;
-                if (userID === user.id) {
-                    if (reaction.count === 0) {
-                        await this.DB.run(`DELETE FROM pinned WHERE messageID = ?`,
-                            reaction.message.id);
-                        await reaction.message.unpin();
-                    } else {
-                        const other = (await reaction.fetchUsers(1)).first();
-                        await this.DB.run(`UPDATE pinned SET userID = ? WHERE messageID = ?`,
-                            other.id, reaction.message.id);
-                    }
-                }
-                await this.DB.exec("COMMIT TRANSACTION")
-            } catch (err) {
-                console.error("Error while processing transaction, rolling back: " + err.stack);
-                await this.DB.exec("ROLLBACK TRANSACTION")
-            }
+            return this.unpin(reaction.message, user.id);
         }
     }
 }

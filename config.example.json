@@ -7,7 +7,7 @@
   "anon": {
     "maxID": 1000,
     "maxInactiveRecords": 1000,
-    "lifetime": 432300
+    "lifetime": 43200
   },
   "pin": {
     "emoji": "\uD83D\uDCCC"

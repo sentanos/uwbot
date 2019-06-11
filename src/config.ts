@@ -15,9 +15,16 @@ export type PinModuleConfig = {
     emoji: string
 }
 
+export type XPModuleConfig = {
+    blockInterval: number,
+    blockMaximum: number,
+    rollingInterval: number
+}
+
 export type BotConfig = {
     guild: Snowflake,
     commands: CommandsModuleConfig,
     anon: AnonModuleConfig,
-    pin: PinModuleConfig
+    pin: PinModuleConfig,
+    xp: XPModuleConfig
 }

@@ -11,5 +11,10 @@
   },
   "pin": {
     "emoji": "\uD83D\uDCCC"
+  },
+  "xp": {
+    "blockInterval": 300,
+    "blockMaximum": 1,
+    "rollingInterval": 604800
   }
 }

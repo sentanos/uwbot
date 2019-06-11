@@ -207,7 +207,6 @@ export class AnonModule extends Module {
 
     public newAlias(anonUser: AnonUser): void {
         anonUser.setAlias(this.randomFreeAlias());
-        anonUser.setColor(randomColor());
     }
 
     public setAlias(anonUser: AnonUser, alias: AnonAlias): void {
@@ -224,9 +223,10 @@ export class AnonModule extends Module {
     public async blacklist(messageID: Snowflake, mod: User): Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
         if (record instanceof Record) {
+            const blacklistID = await this.blacklistUser(record.userID, mod);
             this.deleteAnonUserByID(record.userID);
             return {
-                blacklistID: await this.blacklistUser(record.userID, mod),
+                blacklistID: blacklistID,
                 anonAlias: record.alias
             }
         } else {

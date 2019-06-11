@@ -1,6 +1,8 @@
 import {randomBytes} from "crypto";
 import {AnonID} from "./modules/anon";
 import * as uuid from "uuid/v4";
+import {Snowflake} from "discord.js";
+import * as sqlite from "sqlite";
 
 // Returns a random integer from 0 to max
 export const random = (max: number): number => {
@@ -13,6 +15,18 @@ export const randomColor = (): number => {
 
 export const generateUID = (): AnonID => {
     return uuid();
+};
+
+export const formatInterval = (seconds: number): string => {
+    if (seconds % 86400 == 0) {
+        return seconds / 86400 + " days";
+    } else if (seconds % 3600 == 0) {
+        return seconds / 3600 + " hours";
+    } else if (seconds % 60 == 0) {
+        return seconds / 60 + " minutes";
+    } else {
+        return seconds + " seconds";
+    }
 };
 
 export const randomString = (length: number): Promise<string> => {
@@ -82,5 +96,63 @@ export class Queue<T> {
 
     public toArray(): T[] {
         return this.queue.slice(this.offset);
+    }
+}
+
+export class PersistentChannelList {
+    private readonly DB: sqlite.Database;
+    private readonly table: string;
+
+    constructor(DB: sqlite.Database, table: string) {
+        this.DB = DB;
+        this.table = table;
+    }
+
+    public async getChannels(): Promise<Snowflake[]> {
+        let channels: Snowflake[] = [];
+        const rows = await this.DB.all(`SELECT channelID FROM ${this.table}`);
+        for (let i = 0; i < rows.length; i++) {
+            channels.push(rows[i].channelID);
+        }
+        return channels;
+    }
+
+    public async has(channel: Snowflake): Promise<boolean> {
+        const res = await this.DB.get(`SELECT channelID FROM ${this.table} WHERE channelID = ?`,
+            channel);
+        if (res == null) {
+            return false;
+        }
+        return true;
+    }
+
+    public async add(channel: Snowflake): Promise<void> {
+        await this.DB.exec("BEGIN TRANSACTION");
+        try {
+            if (await this.has(channel)) {
+                throw new Error("SAFE: Channel is already whitelisted");
+            }
+            await this.DB.run(`INSERT INTO ${this.table}(channelID) VALUES(?)`, channel);
+            await this.DB.exec("COMMIT TRANSACTION")
+        } catch (err) {
+            console.error("Error while whitelisting, rolling back: " + err.stack);
+            await this.DB.exec("ROLLBACK TRANSACTION");
+            throw err;
+        }
+    }
+
+    public async remove(channel: Snowflake): Promise<void> {
+        await this.DB.exec("BEGIN TRANSACTION");
+        try {
+            if (!(await this.has(channel))) {
+                throw new Error("SAFE: Channel is not whitelisted");
+            }
+            await this.DB.run(`DELETE FROM ${this.table} WHERE channelID = ?`, channel);
+            await this.DB.exec("COMMIT TRANSACTION")
+        } catch (err) {
+            console.error("Error while whitelisting, rolling back: " + err.stack);
+            await this.DB.exec("ROLLBACK TRANSACTION");
+            throw err;
+        }
     }
 }

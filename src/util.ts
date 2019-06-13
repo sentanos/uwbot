@@ -41,6 +41,19 @@ export const randomString = (length: number): Promise<string> => {
     });
 };
 
+// Returns the difference t1 - t2 in milliseconds
+export const timeDiff = (t1: Date, t2: Date): number => {
+    return t1.getTime() - t2.getTime();
+};
+
+export const toSQLiteDate = (date: Date): string => {
+    return date.toISOString().replace("T", " ").replace("Z","");
+}
+
+export const fromSQLiteDate = (date: string): Date => {
+    return new Date(date + " UTC");
+};
+
 export const getNthIndex = (str: string, substr: string, n: number): number => {
     let i = -1;
 

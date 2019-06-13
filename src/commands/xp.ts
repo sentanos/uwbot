@@ -68,7 +68,7 @@ export class XPLeaderboard extends RequiresXP {
         return message.channel.send(embed
             .setTitle("XP Leaderboard")
             .setDescription(users.join("\n"))
-            .setColor("#208cff"));
+            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
     }
 }
 
@@ -93,7 +93,7 @@ export class XPOptionsGet extends RequiresXP {
             .addField("Block Interval", formatInterval(this.xp.blockInterval), true)
             .addField("Block Maximum", this.xp.blockMaximum, true)
             .addField("Rolling Interval", formatInterval(this.xp.rollingInterval), true)
-            .setColor("#208cff"));
+            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
     }
 }
 
@@ -123,7 +123,7 @@ export class XPExcludeGet extends RequiresXP {
         return message.channel.send(new RichEmbed()
             .setTitle("Excluded Channels")
             .setDescription(channels.join("\n"))
-            .setColor("#208cff"));
+            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
     }
 }
 

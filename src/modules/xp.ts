@@ -2,7 +2,7 @@ import {Message, Snowflake} from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import * as sqlite from "sqlite";
-import {PersistentChannelList} from "../util";
+import {fromSQLiteDate, PersistentChannelList, timeDiff, toSQLiteDate} from "../util";
 
 export type XP = number;
 
@@ -17,8 +17,6 @@ export class XPModule extends Module {
     public blockMaximum: XP;
     // The time interval over which to calculate rolling XP
     public rollingInterval: number;
-    private cache: Map<Snowflake, XP>;
-    private lastBlock: Date;
     private readonly DB: sqlite.Database;
 
     constructor(bot: Bot) {
@@ -29,14 +27,11 @@ export class XPModule extends Module {
         this.blockInterval = config.blockInterval;
         this.blockMaximum = config.blockMaximum;
         this.rollingInterval = config.rollingInterval;
-        this.resetBlock();
-        setInterval(this.upload.bind(this), this.blockInterval * 1000);
         this.bot.client.on("message", this.onMessage.bind(this));
     }
 
-    private resetBlock(): void {
-        this.lastBlock = new Date();
-        this.cache = new Map<Snowflake, XP>();
+    public static levelFromXp(xp: XP): number {
+        return Math.floor(0.85519 * Math.sqrt(xp)) + 1;
     }
 
     private async checkReward(user: Snowflake): Promise<void> {
@@ -60,35 +55,43 @@ export class XPModule extends Module {
     public async getRollingXP(user: Snowflake): Promise<XP> {
         const after: Date = new Date(new Date().getTime() - this.rollingInterval * 1000);
         const res = await this.DB.get("SELECT SUM(xp) as sum FROM xpHistory WHERE userID = ? AND" +
-            " addTime > ?", user, after.toISOString().replace("T", " ").replace("Z",""));
+            " addTime > ?", user, toSQLiteDate(after));
         if (res.sum == null) {
             return 0;
         }
         return res.sum;
     }
 
-    private async upload(): Promise<void> {
-        const cache = new Map(this.cache);
-        this.resetBlock();
-        let jobs: Promise<void>[] = [];
-        for (const [user, add] of cache.entries()) {
-            jobs.push((async () => {
-                let currentTotal: XP;
-                let addHistoryJob = this.DB.run(
-                    "INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user, add);
-                let addJob: Promise<any>;
-                const res = await this.DB.get("SELECT totalXp FROM xp WHERE userID = ?", user);
+    private async addBlockXP(user: Snowflake): Promise<void> {
+        await this.DB.exec("BEGIN TRANSACTION");
+        try {
+            const add = 1;
+            let addJob: Promise<any>;
+            const res = await this.DB.get("SELECT totalXp, lastBlock, blockXp FROM xp WHERE userID =" +
+                " ?", user);
+            const newBlock: boolean = timeDiff(new Date(), fromSQLiteDate(res.lastBlock)) >
+                this.blockInterval * 1000;
+            const unfinishedBlock: boolean = res.blockXp < this.blockMaximum;
+            if (res == null || newBlock || unfinishedBlock) {
                 if (res == null) {
-                    addJob = this.DB.run("INSERT INTO xp(userID, totalXp) VALUES(?, ?)", user, add);
-                } else {
-                    currentTotal = res.totalXp;
-                    addJob = this.DB.run("UPDATE xp SET totalXp = ? WHERE userID = ?",
-                        currentTotal + add, user)
+                    addJob = this.DB.run("INSERT INTO xp(userID, totalXp, lastBlock, blockXp) VALUES(?," +
+                        " ?, ?, ?)", user, add, toSQLiteDate(new Date()), add);
+                } else if (newBlock) {
+                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, lastBlock = ?, blockXp = ? WHERE" +
+                        " userID = ?", res.totalXp + add, toSQLiteDate(new Date()), add, user)
+                } else if (unfinishedBlock) {
+                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, blockXp = ? WHERE userID = ?",
+                        res.totalXp + add, res.blockXp + add, user)
                 }
+                const addHistoryJob = this.DB.run(
+                    "INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user, add);
                 await Promise.all([addJob, addHistoryJob]);
-            })());
+            }
+            await this.DB.exec("COMMIT TRANSACTION");
+        } catch (err) {
+            console.error("Error adding XP for user " + user + ": " + err.stack);
+            await this.DB.exec("ROLLBACK TRANSACTION");
         }
-        await Promise.all(jobs);
     }
 
     public async onMessage(message: Message) {
@@ -101,13 +104,6 @@ export class XPModule extends Module {
         if (await this.exclude.has(message.channel.id)) {
             return
         }
-        if (!this.cache.has(message.author.id)) {
-            this.cache.set(message.author.id, 1);
-        } else {
-            const current: XP = this.cache.get(message.author.id);
-            if (current < this.blockMaximum) {
-                this.cache.set(message.author.id, current + 1);
-            }
-        }
+        await this.addBlockXP(message.author.id);
     }
 }

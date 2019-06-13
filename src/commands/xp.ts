@@ -36,7 +36,6 @@ export class XPCommand extends RequiresXP {
             .setThumbnail(user.avatarURL)
             .addField("Total XP", await this.xp.getXP(user.id), true)
             .addField("Weekly XP", await this.xp.getRollingXP(user.id), true)
-            .setFooter("XP updates every " + this.xp.blockInterval + " seconds")
             .setColor(this.bot.guild.member(user).displayColor));
     }
 }

@@ -18,14 +18,25 @@ export const generateUID = (): AnonID => {
 };
 
 export const formatInterval = (seconds: number): string => {
+    let value: number;
+    let unit: string;
     if (seconds % 86400 == 0) {
-        return seconds / 86400 + " days";
+        value = seconds / 86400;
+        unit = "day";
     } else if (seconds % 3600 == 0) {
-        return seconds / 3600 + " hours";
+        value = seconds / 3600;
+        unit = "hour";
     } else if (seconds % 60 == 0) {
-        return seconds / 60 + " minutes";
+        value = seconds / 60;
+        unit = "minute";
     } else {
-        return seconds + " seconds";
+        value = seconds;
+        unit = "second";
+    }
+    if (value === 1) {
+        return value + " " + unit;
+    } else {
+        return value + " " + unit + "s";
     }
 };
 

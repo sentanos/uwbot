@@ -34,13 +34,24 @@ export class XPModule extends Module {
         return Math.floor(0.85519 * Math.sqrt(xp)) + 1;
     }
 
+    public static xpFromLevel(level: number): XP {
+        return Math.ceil(Math.pow((level - 1) / 0.85519, 2))
+    }
+
+    public static levelSummary(xp: number): string {
+        const level: number = XPModule.levelFromXp(xp);
+        const nextLevel: number = XPModule.xpFromLevel(level + 1) - XPModule.xpFromLevel(level);
+        const progress: XP = xp - XPModule.xpFromLevel(level);
+        return "Level " + level + " (" + progress + "/" + nextLevel + ")";
+    }
+
     private async checkReward(user: Snowflake): Promise<void> {
         // TODO
     }
 
-    public async top(num: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
+    public async top(num: number, offset: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
         return this.DB.all("SELECT userID, totalXp from xp ORDER BY totalXp DESC" +
-            " LIMIT ?", num);
+            " LIMIT ? OFFSET ?", num, offset);
     }
 
     public async getXP(user: Snowflake): Promise<XP> {

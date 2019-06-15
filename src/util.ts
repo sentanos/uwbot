@@ -151,32 +151,16 @@ export class PersistentChannelList {
     }
 
     public async add(channel: Snowflake): Promise<void> {
-        await this.DB.exec("BEGIN TRANSACTION");
-        try {
-            if (await this.has(channel)) {
-                throw new Error("SAFE: Channel is already whitelisted");
-            }
-            await this.DB.run(`INSERT INTO ${this.table}(channelID) VALUES(?)`, channel);
-            await this.DB.exec("COMMIT TRANSACTION")
-        } catch (err) {
-            console.error("Error while whitelisting, rolling back: " + err.stack);
-            await this.DB.exec("ROLLBACK TRANSACTION");
-            throw err;
+        if (await this.has(channel)) {
+            throw new Error("SAFE: Channel is already whitelisted");
         }
+        await this.DB.run(`INSERT INTO ${this.table}(channelID) VALUES(?)`, channel);
     }
 
     public async remove(channel: Snowflake): Promise<void> {
-        await this.DB.exec("BEGIN TRANSACTION");
-        try {
-            if (!(await this.has(channel))) {
-                throw new Error("SAFE: Channel is not whitelisted");
-            }
-            await this.DB.run(`DELETE FROM ${this.table} WHERE channelID = ?`, channel);
-            await this.DB.exec("COMMIT TRANSACTION")
-        } catch (err) {
-            console.error("Error while whitelisting, rolling back: " + err.stack);
-            await this.DB.exec("ROLLBACK TRANSACTION");
-            throw err;
+        if (!(await this.has(channel))) {
+            throw new Error("SAFE: Channel is not whitelisted");
         }
+        await this.DB.run(`DELETE FROM ${this.table} WHERE channelID = ?`, channel);
     }
 }

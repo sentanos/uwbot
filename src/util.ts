@@ -48,7 +48,7 @@ export const timeDiff = (t1: Date, t2: Date): number => {
 
 export const toSQLiteDate = (date: Date): string => {
     return date.toISOString().replace("T", " ").replace("Z","");
-}
+};
 
 export const fromSQLiteDate = (date: string): Date => {
     return new Date(date + " UTC");

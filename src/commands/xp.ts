@@ -1,6 +1,6 @@
 import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
 import {Bot} from "../bot";
-import {Message, RichEmbed, Snowflake} from "discord.js";
+import {GuildMember, Message, RichEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
 import {formatInterval} from "../util";
 
@@ -29,14 +29,22 @@ export class XPCommand extends RequiresXP {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message, person?: string) {
         const embed: RichEmbed = new RichEmbed();
-        const user = message.author;
+        let user: User;
+        if (person != null) {
+            user = await this.bot.getUserFromMessage(message);
+        } else {
+            user = message.author;
+        }
+        const member: GuildMember | void = this.bot.guild.member(user);
+        const xp: XP = await this.xp.getXP(user.id);
         return message.channel.send(embed.setAuthor(user.tag, user.avatarURL)
             .setThumbnail(user.avatarURL)
-            .addField("Total XP", await this.xp.getXP(user.id), true)
+            .addField("Total XP", xp, true)
             .addField("Weekly XP", await this.xp.getRollingXP(user.id), true)
-            .setColor(this.bot.guild.member(user).displayColor));
+            .addField("Level", XPModule.levelSummary(xp))
+            .setColor(member != null ? member.displayColor : this.bot.displayColor()));
     }
 }
 
@@ -45,15 +53,31 @@ export class XPLeaderboard extends RequiresXP {
         super(bot, {
             names: ["xp leaderboard", "xplb"],
             usages: {
-                "Get the top 10 users with the highest XP": []
+                "Get the top 10 users with the highest XP": [],
+                "Get a specific page of the XP leaderboard. Each page has 10 users.": ["page"]
             },
             permission: Permission.None,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
 
-    async exec(message: Message) {
-        const lb: {userID: Snowflake, totalXp: XP}[] = await this.xp.top(10);
+    async exec(message: Message, page?: string) {
+        const pageSize = 10;
+        let pageNum: number;
+        if (page != null) {
+            pageNum = parseInt(page, 10);
+            if (isNaN(pageNum)) {
+                throw new Error("SAFE: Page must be a number");
+            }
+        } else {
+            pageNum = 1;
+        }
+        const lb: {userID: Snowflake, totalXp: XP}[] = await this.xp.top(pageSize,
+            (pageNum - 1) * pageSize);
+        if (lb.length == 0) {
+            throw new Error("SAFE: No users found. You may have selected a page that is out of" +
+                " range.")
+        }
         let users: string[] = [];
         for (let i = 0; i < lb.length; i++) {
             const row: {userID: Snowflake, totalXp: XP} = lb[i];
@@ -61,13 +85,14 @@ export class XPLeaderboard extends RequiresXP {
             if (this.bot.guild.members.has(row.userID)) {
                 name = this.bot.guild.members.get(row.userID).user.tag;
             }
-            users.push((i + 1) + ". " + name + ": " + row.totalXp);
+            users.push((i + 1 + (pageNum - 1) * pageSize) + ". " + name + ": " + row.totalXp +
+                "xp (Level " + XPModule.levelFromXp(row.totalXp) + ")");
         }
-        const embed: RichEmbed = new RichEmbed();
-        return message.channel.send(embed
+        return message.channel.send(new RichEmbed()
             .setTitle("XP Leaderboard")
             .setDescription(users.join("\n"))
-            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
+            .setFooter("Page " + pageNum)
+            .setColor(this.bot.displayColor()));
     }
 }
 
@@ -92,7 +117,7 @@ export class XPOptionsGet extends RequiresXP {
             .addField("Block Interval", formatInterval(this.xp.blockInterval), true)
             .addField("Block Maximum", this.xp.blockMaximum, true)
             .addField("Rolling Interval", formatInterval(this.xp.rollingInterval), true)
-            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
+            .setColor(this.bot.displayColor()));
     }
 }
 
@@ -122,7 +147,7 @@ export class XPExcludeGet extends RequiresXP {
         return message.channel.send(new RichEmbed()
             .setTitle("Excluded Channels")
             .setDescription(channels.join("\n"))
-            .setColor(this.bot.guild.member(this.bot.client.user).displayColor));
+            .setColor(this.bot.displayColor()));
     }
 }
 

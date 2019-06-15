@@ -1,7 +1,7 @@
 import {
-    Client,
-    Guild,
-    TextChannel
+    Client, ColorResolvable,
+    Guild, GuildMember, Message, Snowflake,
+    TextChannel, User
 } from "discord.js";
 import * as sqlite from "sqlite";
 import {readdir} from "fs";
@@ -9,6 +9,7 @@ import {join} from "path";
 import {promisify} from "util";
 import {Module} from "./module";
 import {BotConfig} from "./config";
+import {CommandsModule} from "./modules/commands";
 
 type Modules = {
     [name: string]: Module;
@@ -34,6 +35,46 @@ export class Bot {
     public async initialize(): Promise<void> {
         const num = await this.loadModules();
         console.log("Loaded " + num + " modules");
+    }
+
+    public displayColor(): ColorResolvable {
+        return this.guild.member(this.client.user).displayColor;
+    }
+
+    // Get a user's ID based on their nickname/username/tag/userID
+    public async getUser(guild: Guild, find: string): Promise<User | void> {
+        find = find.toLowerCase();
+        let member: GuildMember;
+        member = guild.members.find(m => m.nickname != null && m.nickname.toLowerCase() === find);
+        if (member == null) {
+            member = guild.members.find(m => m.user.username.toLowerCase() === find);
+        }
+        if (member == null) {
+            member = guild.members.find(m => m.user.tag.toLowerCase() === find);
+        }
+        if (member == null) {
+            try {
+                return await this.client.fetchUser(find);
+            } catch (err) {
+                console.error("Error fetching user from \"" + find + "\": " + err.stack);
+                return null;
+            }
+        }
+        return member.user;
+    }
+
+    public async getUserFromMessage(message: Message): Promise<User> {
+        if (message.mentions.members.size > 0) {
+            return message.mentions.members.first().user;
+        }
+        const content: string = (this.getModule("commands") as CommandsModule)
+            .getRawContent(message.content);
+        const user: User | void = await this.getUser(this.guild, content);
+        if (user instanceof User) {
+            return user;
+        } else {
+            throw new Error("SAFE: User not found")
+        }
     }
 
     // Returns the channel in the bot's guild with the given name. Errors if such a channel does

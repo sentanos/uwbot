@@ -3,6 +3,7 @@ import {AnonID} from "./modules/anon";
 import * as uuid from "uuid/v4";
 import {Snowflake} from "discord.js";
 import * as sqlite from "sqlite";
+import {EventEmitter} from "events";
 
 // Returns a random integer from 0 to max
 export const random = (max: number): number => {
@@ -120,6 +121,39 @@ export class Queue<T> {
 
     public toArray(): T[] {
         return this.queue.slice(this.offset);
+    }
+}
+
+export class Lock {
+    private locked: boolean;
+    private event: EventEmitter;
+
+    constructor() {
+        this.locked = false;
+        this.event = new EventEmitter();
+    }
+
+    acquire() {
+        return new Promise(resolve => {
+            if (!this.locked) {
+                this.locked = true;
+                return resolve();
+            }
+
+            const tryAcquire = () => {
+                if (!this.locked) {
+                    this.locked = true;
+                    this.event.removeListener('release', tryAcquire);
+                    return resolve();
+                }
+            };
+            this.event.on('release', tryAcquire);
+        });
+    }
+
+    release() {
+        this.locked = false;
+        setImmediate(() => this.event.emit('release'));
     }
 }
 

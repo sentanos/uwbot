@@ -15,6 +15,11 @@
   "xp": {
     "blockInterval": 300,
     "blockMaximum": 1,
-    "rollingInterval": 604800
+    "rollingInterval": 604800,
+    "checkInterval": 60,
+    "decayInterval": 86400,
+    "decayXp": 6,
+    "rewardThreshold": 168,
+    "rollingRewardThreshold": 5
   }
 }

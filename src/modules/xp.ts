@@ -1,4 +1,4 @@
-import {Message, Snowflake} from "discord.js";
+import {Channel, Message, Snowflake, User} from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import * as sqlite from "sqlite";
@@ -17,6 +17,12 @@ export class XPModule extends Module {
     public blockMaximum: XP;
     // The time interval over which to calculate rolling XP
     public rollingInterval: number;
+    // The time interval between decay checks
+    public checkInterval: number;
+    // The time interval between XP decays
+    public decayInterval: number;
+    // The number of XP decayed after every decayInterval
+    public decayXp: number;
     private readonly DB: sqlite.Database;
 
     constructor(bot: Bot) {
@@ -26,8 +32,12 @@ export class XPModule extends Module {
         this.exclude = new PersistentChannelList(this.bot.DB, "xpExclude");
         this.blockInterval = config.blockInterval;
         this.blockMaximum = config.blockMaximum;
+        this.checkInterval = config.checkInterval;
         this.rollingInterval = config.rollingInterval;
+        this.decayInterval = config.decayInterval;
+        this.decayXp = config.decayXp;
         this.bot.client.on("message", this.onMessage.bind(this));
+        setInterval(this.checkDecay.bind(this), this.decayInterval * 1000);
     }
 
     public static levelFromXp(xp: XP): number {
@@ -74,35 +84,72 @@ export class XPModule extends Module {
     }
 
     private async addBlockXP(user: Snowflake): Promise<void> {
+        await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
         try {
             const add = 1;
             let addJob: Promise<any>;
             const res = await this.DB.get("SELECT totalXp, lastBlock, blockXp FROM xp WHERE userID =" +
                 " ?", user);
-            const newBlock: boolean = timeDiff(new Date(), fromSQLiteDate(res.lastBlock)) >
-                this.blockInterval * 1000;
-            const unfinishedBlock: boolean = res.blockXp < this.blockMaximum;
+            const newBlock: boolean = res != null && timeDiff(new Date(),
+                fromSQLiteDate(res.lastBlock)) > this.blockInterval * 1000;
+            const unfinishedBlock: boolean = res != null && res.blockXp < this.blockMaximum;
             if (res == null || newBlock || unfinishedBlock) {
                 if (res == null) {
-                    addJob = this.DB.run("INSERT INTO xp(userID, totalXp, lastBlock, blockXp) VALUES(?," +
-                        " ?, ?, ?)", user, add, toSQLiteDate(new Date()), add);
+                    addJob = this.DB.run("INSERT INTO xp(userID, totalXp, lastBlock, blockXp," +
+                        " lastMessage) VALUES(?, ?, ?, ?, ?)", user, add, toSQLiteDate(new Date()),
+                        add, toSQLiteDate(new Date()));
                 } else if (newBlock) {
-                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, lastBlock = ?, blockXp = ? WHERE" +
-                        " userID = ?", res.totalXp + add, toSQLiteDate(new Date()), add, user)
+                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, lastBlock = ?, blockXp = ?," +
+                        " lastMessage = ? WHERE userID = ?", res.totalXp + add,
+                        toSQLiteDate(new Date()), add, toSQLiteDate(new Date()), user)
                 } else if (unfinishedBlock) {
-                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, blockXp = ? WHERE userID = ?",
-                        res.totalXp + add, res.blockXp + add, user)
+                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, blockXp = ?, lastMessage =" +
+                        " ? WHERE userID = ?", res.totalXp + add, res.blockXp + add,
+                        toSQLiteDate(new Date()), user)
                 }
                 const addHistoryJob = this.DB.run(
                     "INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user, add);
                 await Promise.all([addJob, addHistoryJob]);
+            } else {
+                await this.DB.run("UPDATE xp SET lastMessage = ? WHERE userID = ?",
+                    toSQLiteDate(new Date()), user);
             }
             await this.DB.exec("COMMIT TRANSACTION");
         } catch (err) {
             console.error("Error adding XP for user " + user + ": " + err.stack);
             await this.DB.exec("ROLLBACK TRANSACTION");
         }
+        await this.bot.transactionLock.release();
+    }
+
+    private async checkDecay(): Promise<void> {
+        await this.bot.transactionLock.acquire();
+        await this.DB.exec("BEGIN TRANSACTION");
+        try {
+            const rows = await this.DB.all("SELECT userID, totalXp from xp WHERE" +
+                " julianday(datetime('now')) - julianday(lastMessage) > ? AND" +
+                " julianday(datetime('now')) - julianday(lastDecay) > ?",
+                this.decayInterval / 86400, this.decayInterval / 86400);
+            let jobs = [];
+            for (let i = 0; i < rows.length; i++) {
+                const user = rows[i].userID;
+                const xp = rows[i].totalXp;
+                const newXp: number = xp - this.decayXp;
+                if (newXp >= 0) {
+                    jobs.push(this.DB.run("UPDATE xp SET totalXp = ?, lastDecay = ? WHERE userID" +
+                        " = ?", newXp, toSQLiteDate(new Date()), user));
+                    jobs.push(this.DB.run("INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user,
+                        this.decayXp * -1));
+                }
+            }
+            await Promise.all(jobs);
+            await this.DB.exec("COMMIT TRANSACTION");
+        } catch (err) {
+            console.error("Error running XP decay:" + err.stack);
+            await this.DB.exec("ROLLBACK TRANSACTION");
+        }
+        await this.bot.transactionLock.release();
     }
 
     public async onMessage(message: Message) {

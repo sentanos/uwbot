@@ -18,7 +18,12 @@ export type PinModuleConfig = {
 export type XPModuleConfig = {
     blockInterval: number,
     blockMaximum: number,
-    rollingInterval: number
+    rollingInterval: number,
+    checkInterval: number,
+    decayInterval: number,
+    decayXp: number,
+    rewardThreshold: number,
+    rollingRewardThreshold: number
 }
 
 export type BotConfig = {

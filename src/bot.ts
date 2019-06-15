@@ -10,6 +10,7 @@ import {promisify} from "util";
 import {Module} from "./module";
 import {BotConfig} from "./config";
 import {CommandsModule} from "./modules/commands";
+import {Lock} from "./util";
 
 type Modules = {
     [name: string]: Module;
@@ -20,6 +21,7 @@ export class Bot {
     public readonly DB: sqlite.Database;
     public readonly guild: Guild;
     public readonly config: BotConfig;
+    public readonly transactionLock: Lock;
     private readonly modules: Modules;
     private readonly loaded: Set<string>;
 
@@ -28,6 +30,7 @@ export class Bot {
         this.DB = DB;
         this.config = config;
         this.guild = client.guilds.get(config.guild);
+        this.transactionLock = new Lock();
         this.modules = {};
         this.loaded = new Set<string>();
     }

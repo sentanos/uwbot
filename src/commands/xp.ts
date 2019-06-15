@@ -113,10 +113,15 @@ export class XPOptionsGet extends RequiresXP {
             .setTitle("XP Module Options")
             .setDescription("Users can receive XP up to a `Block Maximum` in one `Block" +
                 " Interval`. Users also have rolling XP count which only includes the XP" +
-                " received in the most recent `Rolling Interval`.")
+                " received in the most recent `Rolling Interval`. If a user doesn't send a" +
+                " message after `Decay Interval`, they lose `Decay XP` every `Decay Interval`" +
+                " (decay is checked for all users after every `Check Interval`.")
             .addField("Block Interval", formatInterval(this.xp.blockInterval), true)
-            .addField("Block Maximum", this.xp.blockMaximum, true)
+            .addField("Block Maximum", this.xp.blockMaximum + " XP", true)
             .addField("Rolling Interval", formatInterval(this.xp.rollingInterval), true)
+            .addField("Decay Interval", formatInterval(this.xp.decayInterval), true)
+            .addField("Decay XP", this.xp.decayXp + " XP", true)
+            .addField("Check Interval", formatInterval(this.xp.checkInterval), true)
             .setColor(this.bot.displayColor()));
     }
 }

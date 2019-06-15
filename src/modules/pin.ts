@@ -19,6 +19,7 @@ export class PinModule extends Module {
     // Unpin the given message. If creator is specified, make sure that the message pinner's ID
     // matches. Otherwise, unpin no matter who the original pinner was.
     public async unpin(message: Message, creator?: Snowflake) {
+        await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
         try {
             const userID: Snowflake = (await this.DB.get(
@@ -40,6 +41,7 @@ export class PinModule extends Module {
             console.error("Error while processing transaction, rolling back: " + err.stack);
             await this.DB.exec("ROLLBACK TRANSACTION")
         }
+        await this.bot.transactionLock.release();
     }
 
     public async messageReactionAdd(reaction: MessageReaction, user: User) {

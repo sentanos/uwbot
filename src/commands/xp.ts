@@ -22,7 +22,8 @@ export class XPCommand extends RequiresXP {
         super(bot, {
             names: ["xp"],
             usages: {
-                "Find out how much XP you have": []
+                "Get your XP profile": [],
+                "Get another user's XP profile": ["nickname/username/tag/userID"]
             },
             permission: Permission.None,
             availability: Availability.WhitelistedGuildChannelsOnly

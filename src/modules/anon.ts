@@ -207,6 +207,7 @@ export class AnonModule extends Module {
 
     public newAlias(anonUser: AnonUser): void {
         anonUser.setAlias(this.randomFreeAlias());
+        anonUser.setColor(randomColor());
     }
 
     public setAlias(anonUser: AnonUser, alias: AnonAlias): void {

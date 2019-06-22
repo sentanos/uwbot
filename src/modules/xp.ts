@@ -1,4 +1,10 @@
-import {Channel, Message, Snowflake, User} from "discord.js";
+import {
+    GuildMember,
+    Message, PartialTextBasedChannelFields,
+    RichEmbed,
+    Snowflake,
+    User
+} from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import * as sqlite from "sqlite";
@@ -23,6 +29,12 @@ export class XPModule extends Module {
     public decayInterval: number;
     // The number of XP decayed after every decayInterval
     public decayXp: number;
+    // The minimum XP required for reward
+    public rewardThreshold: XP;
+    // The minimum rolling XP required for reward
+    public rollingRewardThreshold: XP;
+    // Reward role ID
+    public reward: Snowflake;
     private readonly DB: sqlite.Database;
 
     constructor(bot: Bot) {
@@ -36,6 +48,9 @@ export class XPModule extends Module {
         this.rollingInterval = config.rollingInterval;
         this.decayInterval = config.decayInterval;
         this.decayXp = config.decayXp;
+        this.rewardThreshold = config.rewardThreshold;
+        this.rollingRewardThreshold = config.rollingRewardThreshold;
+        this.reward = config.reward;
         this.bot.client.on("message", this.onMessage.bind(this));
         setInterval(this.checkDecay.bind(this), this.decayInterval * 1000);
     }
@@ -55,8 +70,72 @@ export class XPModule extends Module {
         return "Level " + level + " (" + progress + "/" + nextLevel + ")";
     }
 
-    private async checkReward(user: Snowflake): Promise<void> {
-        // TODO
+    private async checkReward(user: Snowflake): Promise<boolean> {
+        const xp: XP = await this.getXP(user);
+        const rolling: XP = await this.getRollingXP(user);
+        return xp >= this.rewardThreshold && rolling >= this.rollingRewardThreshold;
+    }
+
+    private async addReward(member: GuildMember): Promise<boolean> {
+        if (member.roles.get(this.reward) == null) {
+            await member.addRole(this.reward);
+            return true;
+        }
+        return false;
+    }
+
+    private async removeReward(member: GuildMember): Promise<boolean> {
+        if (member.roles.get(this.reward) != null) {
+            await member.removeRole(this.reward);
+            return true;
+        }
+        return false;
+    }
+
+    private async updateReward(user: Snowflake, notifyAdd?: PartialTextBasedChannelFields,
+                               notifyRemove?: PartialTextBasedChannelFields):
+        Promise<boolean> {
+        let member: GuildMember;
+        try {
+            member = await this.bot.guild.fetchMember(user);
+        } catch (e) {
+            console.error("Error fetching member for " + user + " for reward update: " + e.stack);
+            return false;
+        }
+        if (member == null) {
+            return false;
+        }
+        if (await this.checkReward(user)) {
+            if (await this.addReward(member) && notifyAdd != null) {
+                await notifyAdd.send(new RichEmbed()
+                    .setDescription(member.user.toString() + " You are now a regular!")
+                    .setColor(this.bot.displayColor()));
+            }
+        } else {
+            if (await this.removeReward(member) && notifyRemove != null) {
+                await notifyRemove.send(new RichEmbed()
+                    .setDescription("You lost regular in the UW discord due to inactivity")
+                    .setColor(this.bot.displayColor()));
+            }
+        }
+    }
+
+    public async updateAll(): Promise<void> {
+        const rewarded = await this.bot.guild.roles.get(this.reward).members.array();
+        let jobs = [];
+        for (let i = 0; i < rewarded.length; i++) {
+            jobs.push((async () => {
+                if (!(await this.checkReward(rewarded[i].id))) {
+                    await this.removeReward(rewarded[i]);
+                }
+            })());
+        }
+        const maybeReward = await this.DB.all("SELECT userID from xp WHERE totalXp >= ?",
+            this.rewardThreshold);
+        for (let i = 0; i < maybeReward.length; i++) {
+            jobs.push(this.updateReward(maybeReward[i].userID));
+        }
+        await Promise.all(jobs);
     }
 
     public async top(num: number, offset: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
@@ -83,7 +162,7 @@ export class XPModule extends Module {
         return res.sum;
     }
 
-    private async addBlockXP(user: Snowflake): Promise<void> {
+    private async addBlockXP(user: Snowflake, message?: Message): Promise<void> {
         await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
         try {
@@ -121,11 +200,14 @@ export class XPModule extends Module {
             await this.DB.exec("ROLLBACK TRANSACTION");
         }
         await this.bot.transactionLock.release();
+        await this.updateReward(user, message.channel);
     }
 
     private async checkDecay(): Promise<void> {
         await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
+        let rewardCheckUsers = [];
+        let rewardChecks = [];
         try {
             const rows = await this.DB.all("SELECT userID, totalXp from xp WHERE" +
                 " julianday(datetime('now')) - julianday(lastMessage) > ? AND" +
@@ -135,21 +217,36 @@ export class XPModule extends Module {
             for (let i = 0; i < rows.length; i++) {
                 const user = rows[i].userID;
                 const xp = rows[i].totalXp;
-                const newXp: number = xp - this.decayXp;
-                if (newXp >= 0) {
+                if (xp > 0) {
+                    const newXp: XP = Math.max(0, xp - this.decayXp);
+                    const decay: XP = Math.max(xp * -1, this.decayXp * -1);
                     jobs.push(this.DB.run("UPDATE xp SET totalXp = ?, lastDecay = ? WHERE userID" +
                         " = ?", newXp, toSQLiteDate(new Date()), user));
                     jobs.push(this.DB.run("INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user,
-                        this.decayXp * -1));
+                        decay));
+                    rewardCheckUsers.push(user);
                 }
             }
             await Promise.all(jobs);
             await this.DB.exec("COMMIT TRANSACTION");
         } catch (err) {
-            console.error("Error running XP decay:" + err.stack);
+            console.error("Error running XP decay: " + err.stack);
             await this.DB.exec("ROLLBACK TRANSACTION");
         }
         await this.bot.transactionLock.release();
+        if (rewardCheckUsers.length > 0) {
+            for (let i = 0; i < rewardCheckUsers.length; i++) {
+                const userID: Snowflake = rewardCheckUsers[i];
+                let user: User;
+                try {
+                    user = await this.bot.client.fetchUser(userID);
+                    rewardChecks.push(this.updateReward(userID, null, user));
+                } catch (err) {
+                    console.error("Update for user " + userID + " for decay failed: " + err.stack);
+                }
+            }
+            await Promise.all(rewardChecks);
+        }
     }
 
     public async onMessage(message: Message) {
@@ -162,6 +259,6 @@ export class XPModule extends Module {
         if (await this.exclude.has(message.channel.id)) {
             return
         }
-        await this.addBlockXP(message.author.id);
+        await this.addBlockXP(message.author.id, message);
     }
 }

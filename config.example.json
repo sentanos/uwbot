@@ -20,6 +20,7 @@
     "decayInterval": 86400,
     "decayXp": 6,
     "rewardThreshold": 168,
-    "rollingRewardThreshold": 5
+    "rollingRewardThreshold": 5,
+    "reward": "enter_role_id_here"
   }
 }

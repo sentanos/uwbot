@@ -23,7 +23,8 @@ export type XPModuleConfig = {
     decayInterval: number,
     decayXp: number,
     rewardThreshold: number,
-    rollingRewardThreshold: number
+    rollingRewardThreshold: number,
+    reward: Snowflake
 }
 
 export type BotConfig = {

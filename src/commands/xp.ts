@@ -116,13 +116,19 @@ export class XPOptionsGet extends RequiresXP {
                 " Interval`. Users also have rolling XP count which only includes the XP" +
                 " received in the most recent `Rolling Interval`. If a user doesn't send a" +
                 " message after `Decay Interval`, they lose `Decay XP` every `Decay Interval`" +
-                " (decay is checked for all users after every `Check Interval`.")
+                " (decay is checked for all users after every `Check Interval`. `Reward Role`" +
+                " will be given to uses who have a higher XP count than `Reward Threshold` and a" +
+                " higher rolling XP count than `Rolling Reward Threshold`.")
             .addField("Block Interval", formatInterval(this.xp.blockInterval), true)
             .addField("Block Maximum", this.xp.blockMaximum + " XP", true)
             .addField("Rolling Interval", formatInterval(this.xp.rollingInterval), true)
             .addField("Decay Interval", formatInterval(this.xp.decayInterval), true)
             .addField("Decay XP", this.xp.decayXp + " XP", true)
             .addField("Check Interval", formatInterval(this.xp.checkInterval), true)
+            .addField("Reward Threshold", this.xp.rewardThreshold + " XP", true)
+            .addField("Rolling Reward Threshold", this.xp.rollingRewardThreshold + " XP", true)
+            .addField("Reward Role", this.bot.guild.roles.get(this.xp.reward).name +
+                " (" + this.xp.reward + ")")
             .setColor(this.bot.displayColor()));
     }
 }
@@ -166,7 +172,7 @@ export class XPExcludeAdd extends RequiresXP {
             },
             permission: Permission.UserKick,
             availability: Availability.GuildOnly
-        })
+        });
     }
 
     async exec(message: Message, channel: string) {
@@ -176,7 +182,7 @@ export class XPExcludeAdd extends RequiresXP {
         }
         await this.xp.exclude.add(channel);
         return message.channel.send("Added channel #" + message.guild.channels.get(channel).name +
-            " to exclusion list")
+            " to exclusion list");
     }
 }
 
@@ -189,12 +195,32 @@ export class XPExcludeRemove extends RequiresXP {
             },
             permission: Permission.UserKick,
             availability: Availability.GuildOnly
-        })
+        });
     }
 
     async exec(message: Message, channel: string) {
         await this.xp.exclude.remove(channel);
-        return message.channel.send("Removed channel from exclusion list")
+        return message.channel.send("Removed channel from exclusion list");
+    }
+}
+
+export class XPUpdateAll extends RequiresXP {
+    constructor(bot: Bot) {
+        super(bot, {
+            names: ["xp updateall"],
+            usages: {
+                "Bring all users up to date for XP rewards": []
+            },
+            permission: Permission.UserKick,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message) {
+        message.channel.startTyping();
+        await this.xp.updateAll();
+        message.channel.stopTyping();
+        return message.channel.send("Full user update complete");
     }
 }
 

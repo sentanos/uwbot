@@ -71,7 +71,7 @@ export class XPLeaderboard extends RequiresXP {
                 throw new Error("SAFE: Page must be a number");
             }
             if (pageNum <= 0) {
-                throw new Error("SAFE: Page must be a positive number");
+                throw new Error("SAFE: Page must be a positive nonzero number");
             }
         } else {
             pageNum = 1;

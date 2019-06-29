@@ -70,6 +70,9 @@ export class XPLeaderboard extends RequiresXP {
             if (isNaN(pageNum)) {
                 throw new Error("SAFE: Page must be a number");
             }
+            if (pageNum <= 0) {
+                throw new Error("SAFE: Page must be a positive number");
+            }
         } else {
             pageNum = 1;
         }

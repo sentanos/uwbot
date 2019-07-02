@@ -1,5 +1,6 @@
 {
   "guild": "enter_guild_id_here",
+  "client": {},
   "commands": {
     "prefix": ">",
     "separator": " "

@@ -1,6 +1,6 @@
 import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
 import {Bot} from "../bot";
-import {GuildMember, Message, RichEmbed, Snowflake, User} from "discord.js";
+import {GuildMember, Message, MessageEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
 import {formatInterval} from "../util";
 
@@ -31,7 +31,7 @@ export class XPCommand extends RequiresXP {
     }
 
     async exec(message: Message, person?: string) {
-        const embed: RichEmbed = new RichEmbed();
+        const embed: MessageEmbed = new MessageEmbed();
         let user: User;
         if (person != null) {
             user = await this.bot.getUserFromMessage(message);
@@ -40,8 +40,8 @@ export class XPCommand extends RequiresXP {
         }
         const member: GuildMember | void = this.bot.guild.member(user);
         const xp: XP = await this.xp.getXP(user.id);
-        return message.channel.send(embed.setAuthor(user.tag, user.avatarURL)
-            .setThumbnail(user.avatarURL)
+        return message.channel.send(embed.setAuthor(user.tag, user.avatarURL())
+            .setThumbnail(user.avatarURL())
             .addField("Total XP", xp, true)
             .addField("Weekly XP", await this.xp.getRollingXP(user.id), true)
             .addField("Level", XPModule.levelSummary(xp))
@@ -92,7 +92,7 @@ export class XPLeaderboard extends RequiresXP {
             users.push((i + 1 + (pageNum - 1) * pageSize) + ". " + name + ": " + row.totalXp +
                 "xp (Level " + XPModule.levelFromXp(row.totalXp) + ")");
         }
-        return message.channel.send(new RichEmbed()
+        return message.channel.send(new MessageEmbed()
             .setTitle("XP Leaderboard")
             .setDescription(users.join("\n"))
             .setFooter("Page " + pageNum)
@@ -113,7 +113,7 @@ export class XPOptionsGet extends RequiresXP {
     }
 
     async exec(message: Message) {
-        return message.channel.send(new RichEmbed()
+        return message.channel.send(new MessageEmbed()
             .setTitle("XP Module Options")
             .setDescription("Users can receive XP up to a `Block Maximum` in one `Block" +
                 " Interval`. Users also have rolling XP count which only includes the XP" +
@@ -159,7 +159,7 @@ export class XPExcludeGet extends RequiresXP {
                 channels.push(id);
             }
         }
-        return message.channel.send(new RichEmbed()
+        return message.channel.send(new MessageEmbed()
             .setTitle("Excluded Channels")
             .setDescription(channels.join("\n"))
             .setColor(this.bot.displayColor()));
@@ -220,7 +220,7 @@ export class XPUpdateAll extends RequiresXP {
     }
 
     async exec(message: Message) {
-        message.channel.startTyping();
+        await message.channel.startTyping();
         await this.xp.updateAll();
         message.channel.stopTyping();
         return message.channel.send("Full user update complete");

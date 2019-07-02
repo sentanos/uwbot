@@ -1,7 +1,6 @@
 import {
     Client, ColorResolvable,
-    Guild, GuildMember, Message, Snowflake,
-    TextChannel, User
+    Guild, GuildMember, Message, TextChannel, User
 } from "discord.js";
 import * as sqlite from "sqlite";
 import {readdir} from "fs";
@@ -57,7 +56,7 @@ export class Bot {
         }
         if (member == null) {
             try {
-                return await this.client.fetchUser(find);
+                return await this.client.users.fetch(find);
             } catch (err) {
                 console.error("Error fetching user from \"" + find + "\": " + err.stack);
                 return null;

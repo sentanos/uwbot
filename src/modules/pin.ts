@@ -35,10 +35,10 @@ export class PinModule extends Module {
                         message.id);
                     await message.unpin();
                     if (data.pinMessage != null) {
-                        await (await message.channel.fetchMessage(data.pinMessage)).delete();
+                        await (await message.channel.messages.fetch(data.pinMessage)).delete();
                     }
                 } else {
-                    const other = (await reactions.fetchUsers(1)).first();
+                    const other = (await reactions.users.fetch({limit: 1})).first();
                     await this.DB.run(`UPDATE pinned SET userID = ? WHERE messageID = ?`,
                         other.id, message.id);
                 }
@@ -81,6 +81,9 @@ export class PinModule extends Module {
     }
 
     public async messageReactionAdd(reaction: MessageReaction, user: User) {
+        if (reaction.message.partial) {
+            await reaction.message.fetch();
+        }
         if (reaction.message.guild != null
             && !reaction.message.pinned
             && reaction.emoji.name === this.config.emoji) {
@@ -89,6 +92,9 @@ export class PinModule extends Module {
     }
 
     public async messageReactionRemove(reaction: MessageReaction, user: User) {
+        if (reaction.message.partial) {
+            await reaction.message.fetch();
+        }
         if (reaction.message.guild != null
             && reaction.message.pinned
             && reaction.emoji.name === this.config.emoji) {

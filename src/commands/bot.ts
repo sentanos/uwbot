@@ -5,7 +5,7 @@ import {
     CommandsModule,
     Permission
 } from "../modules/commands";
-import {Message, RichEmbed} from "discord.js";
+import {Message, MessageEmbed} from "discord.js";
 
 export class Ping extends Command {
     constructor(bot) {
@@ -20,7 +20,7 @@ export class Ping extends Command {
     }
 
     async exec(message: Message) {
-        return message.channel.send("pong (" + Math.round(this.bot.client.ping) + "ms)");
+        return message.channel.send("pong");
     }
 }
 
@@ -38,7 +38,7 @@ export class Commands extends Command {
     }
 
     async exec(message: Message) {
-        const embed: RichEmbed = new RichEmbed();
+        const embed: MessageEmbed = new MessageEmbed();
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         const search = handler.getRawContent(message.content);
         if (search === "") {
@@ -82,7 +82,7 @@ export class PinnedBy extends Command {
         if (row == null) {
             throw new Error("SAFE: Message not found")
         }
-        const member = await this.bot.guild.fetchMember(row.userID);
+        const member = await this.bot.guild.members.fetch(row.userID);
         if (member == null) {
             return message.reply(row.userID);
         } else {
@@ -104,7 +104,7 @@ export class Source extends Command {
     }
 
     async exec(message: Message) {
-        message.channel.send("My source code is here: https://github.com/sentanos/uwbot\nI" +
+        return message.channel.send("My source code is here: https://github.com/sentanos/uwbot\nI" +
             " welcome contributions from anyone!");
     }
 }

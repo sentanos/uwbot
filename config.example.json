@@ -1,6 +1,8 @@
 {
   "guild": "enter_guild_id_here",
-  "client": {},
+  "client": {
+    "partials": ["MESSAGE"]
+  },
   "commands": {
     "prefix": ">",
     "separator": " "

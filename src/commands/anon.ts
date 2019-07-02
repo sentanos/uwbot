@@ -1,5 +1,5 @@
 import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
-import {Message, RichEmbed, Snowflake} from "discord.js";
+import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {AnonModule, AnonUser} from "../modules/anon";
 import {randomColor} from "../util";
 import {Bot} from "../bot";
@@ -87,7 +87,8 @@ export class MessageCommand extends RequiresAnon {
         }
         const anonUser: AnonUser | void = this.anon.getAnonUserByAlias(id);
         if (anonUser instanceof AnonUser) {
-            return this.anon.sendAnonMessage(anonUser.user.dmChannel || anonUser.user, message, 1);
+            return this.anon.sendAnonMessage(anonUser.user.dmChannel ||
+                await anonUser.user.createDM(), message, 1);
         } else {
             throw new Error("SAFE: User not found");
         }
@@ -176,7 +177,7 @@ export class BlacklistedBy extends RequiresAnon {
     async exec(message: Message, blacklistID: string) {
         const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
         if (typeof id === "string") {
-            const member = await this.anon.guild.fetchMember(id);
+            const member = await this.anon.guild.members.fetch(id);
             if (member == null) {
                 return message.reply(id);
             } else {
@@ -246,7 +247,7 @@ export class SetColor extends RequiresAnon {
             throw new Error("SAFE: Invalid parameters")
         }
         anonUser.setColor(colorDecimal);
-        message.channel.send(new RichEmbed()
+        return message.channel.send(new MessageEmbed()
             .setTitle("Color set")
             .setColor(colorDecimal));
     }

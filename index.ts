@@ -4,7 +4,6 @@ import {readFileSync, existsSync} from "fs";
 import * as sqlite from "sqlite";
 import {BotConfig} from "./src/config";
 
-const client = new Client();
 const initializePath = "./db/create.sql";
 
 const token = process.env.DISCORD_TOKEN;
@@ -22,6 +21,8 @@ if (databasePath == null) {
 
 (async () => {
     const config: BotConfig = JSON.parse(readFileSync(configPath, "utf8"));
+
+    const client = new Client(config.client);
 
     const mustInitializeDB: boolean = !existsSync(databasePath);
     const DB: sqlite.Database = await sqlite.open(databasePath);

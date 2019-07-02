@@ -1,7 +1,7 @@
 import {
     GuildMember,
     Message, PartialTextBasedChannelFields,
-    RichEmbed,
+    MessageEmbed,
     Snowflake,
     User
 } from "discord.js";
@@ -78,7 +78,7 @@ export class XPModule extends Module {
 
     private async addReward(member: GuildMember): Promise<boolean> {
         if (member.roles.get(this.reward) == null) {
-            await member.addRole(this.reward);
+            await member.roles.add(this.reward);
             return true;
         }
         return false;
@@ -86,7 +86,7 @@ export class XPModule extends Module {
 
     private async removeReward(member: GuildMember): Promise<boolean> {
         if (member.roles.get(this.reward) != null) {
-            await member.removeRole(this.reward);
+            await member.roles.remove(this.reward);
             return true;
         }
         return false;
@@ -97,7 +97,7 @@ export class XPModule extends Module {
         Promise<boolean> {
         let member: GuildMember;
         try {
-            member = await this.bot.guild.fetchMember(user);
+            member = await this.bot.guild.members.fetch(user);
         } catch (e) {
             console.error("Error fetching member for " + user + " for reward update: " + e.stack);
             return false;
@@ -107,13 +107,13 @@ export class XPModule extends Module {
         }
         if (await this.checkReward(user)) {
             if (await this.addReward(member) && notifyAdd != null) {
-                await notifyAdd.send(new RichEmbed()
+                await notifyAdd.send(new MessageEmbed()
                     .setDescription(member.user.toString() + " You are now a regular!")
                     .setColor(this.bot.displayColor()));
             }
         } else {
             if (await this.removeReward(member) && notifyRemove != null) {
-                await notifyRemove.send(new RichEmbed()
+                await notifyRemove.send(new MessageEmbed()
                     .setDescription("You lost regular in the UW discord due to inactivity")
                     .setColor(this.bot.displayColor()));
             }
@@ -239,7 +239,7 @@ export class XPModule extends Module {
                 const userID: Snowflake = rewardCheckUsers[i];
                 let user: User;
                 try {
-                    user = await this.bot.client.fetchUser(userID);
+                    user = await this.bot.client.users.fetch(userID);
                     rewardChecks.push(this.updateReward(userID, null, user));
                 } catch (err) {
                     console.error("Update for user " + userID + " for decay failed: " + err.stack);

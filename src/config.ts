@@ -1,4 +1,4 @@
-import {Snowflake} from "discord.js";
+import {ClientOptions, Snowflake} from "discord.js";
 
 export type CommandsModuleConfig = {
     prefix: string,
@@ -29,6 +29,7 @@ export type XPModuleConfig = {
 
 export type BotConfig = {
     guild: Snowflake,
+    client: ClientOptions,
     commands: CommandsModuleConfig,
     anon: AnonModuleConfig,
     pin: PinModuleConfig,

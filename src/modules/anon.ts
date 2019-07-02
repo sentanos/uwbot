@@ -3,8 +3,8 @@ import {
     User,
     Guild,
     Message,
-    RichEmbed,
-    TextBasedChannelFields, PartialTextBasedChannelFields, Channel
+    MessageEmbed,
+    TextBasedChannelFields, PartialTextBasedChannelFields, Channel, TextChannel, DMChannel
 } from "discord.js"
 import {createHash} from "crypto";
 import * as sqlite from "sqlite";
@@ -279,9 +279,9 @@ export class AnonModule extends Module {
         return this.messageRecords.getLastRecord(channel)
     }
 
-    public async sendAnonMessage(channelOpt: string | PartialTextBasedChannelFields, message: Message,
+    public async sendAnonMessage(channelOpt: string | TextChannel | DMChannel, message: Message,
                                  offset: number = 0) {
-        let channel: PartialTextBasedChannelFields;
+        let channel: TextChannel | DMChannel;
         if (typeof channelOpt === "string") {
             channel = this.bot.getChannelByName(channelOpt)
         } else {
@@ -322,30 +322,28 @@ export class AnonUser {
         this.anonAlias = alias;
     }
 
-    private buildMessage(content: string, prevContent?: string): RichEmbed {
+    private buildMessage(content: string, prevContent?: string): MessageEmbed {
         if (prevContent != null) {
             content = prevContent + "\n" + content;
         }
-        return new RichEmbed()
+        return new MessageEmbed()
             .setTitle(this.anonAlias)
             .setDescription(content)
             .setColor(this.color)
             // .setFooter(this.anonID)
     }
 
-    public async send(channel: TextBasedChannelFields | PartialTextBasedChannelFields, content: string) {
-        if ("fetchMessages" in channel) {
-            const lastMessage: Message = (await channel.fetchMessages({limit: 1})).first();
-            const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
-            if (lastRecord instanceof Record
-                && lastRecord.messageID === lastMessage.id
-                && lastRecord.userID === this.user.id
-                && lastMessage.embeds[0].title === this.getAlias().toString()
-                && lastMessage.embeds[0].color === this.color) {
-                const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
-                AnonModule.onAnonUpdate(lastRecord, message);
-                return
-            }
+    public async send(channel: TextChannel | DMChannel, content: string) {
+        const lastMessage: Message = (await channel.messages.fetch({limit: 1})).first();
+        const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
+        if (lastRecord instanceof Record
+            && lastRecord.messageID === lastMessage.id
+            && lastRecord.userID === this.user.id
+            && lastMessage.embeds[0].title === this.getAlias().toString()
+            && lastMessage.embeds[0].color === this.color) {
+            const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
+            AnonModule.onAnonUpdate(lastRecord, message);
+            return
         }
         const message = await channel.send(this.buildMessage(content)) as Message;
         this.anon.onAnonMessage(this, message);

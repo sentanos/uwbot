@@ -178,10 +178,7 @@ export class PersistentChannelList {
     public async has(channel: Snowflake): Promise<boolean> {
         const res = await this.DB.get(`SELECT channelID FROM ${this.table} WHERE channelID = ?`,
             channel);
-        if (res == null) {
-            return false;
-        }
-        return true;
+        return res != null;
     }
 
     public async add(channel: Snowflake): Promise<void> {

@@ -11,6 +11,7 @@ CREATE TABLE logs(
 );
 CREATE TABLE pinned(
     messageID TEXT PRIMARY KEY,
+    pinMessage TEXT,
     userID TEXT NOT NULL,
     pinnedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

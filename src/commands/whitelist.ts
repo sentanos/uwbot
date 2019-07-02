@@ -1,6 +1,6 @@
 import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
 import {Bot} from "../bot";
-import {Message, RichEmbed, Snowflake} from "discord.js";
+import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {WhitelistModule} from "../modules/whitelist";
 
 class RequiresWhitelist extends Command {
@@ -39,7 +39,7 @@ export class WhitelistGet extends RequiresWhitelist {
                 channels.push(id);
             }
         }
-        return message.channel.send(new RichEmbed()
+        return message.channel.send(new MessageEmbed()
             .setTitle("Whitelisted Channels")
             .setDescription(channels.join("\n"))
             .setColor("#ffffff"));

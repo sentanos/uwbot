@@ -25,5 +25,8 @@
     "rewardThreshold": 168,
     "rollingRewardThreshold": 5,
     "reward": "enter_role_id_here"
+  },
+  "audit": {
+    "channel": "enter_channel_id_here"
   }
 }

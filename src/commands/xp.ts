@@ -171,7 +171,7 @@ export class XPExcludeAdd extends RequiresXP {
         super(bot, {
             names: ["xp exclude add"],
             usages: {
-                "Adds a channel to the XP exclude list": ["channelID"]
+                "Adds a channel to the XP exclusion list": ["channelID"]
             },
             permission: Permission.UserKick,
             availability: Availability.GuildOnly
@@ -194,7 +194,7 @@ export class XPExcludeRemove extends RequiresXP {
         super(bot, {
             names: ["xp exclude remove"],
             usages: {
-                "Removes a channel from the whitelist": ["channelID"]
+                "Removes a channel from the XP exclusion list": ["channelID"]
             },
             permission: Permission.UserKick,
             availability: Availability.GuildOnly
@@ -212,7 +212,8 @@ export class XPUpdateAll extends RequiresXP {
         super(bot, {
             names: ["xp updateall"],
             usages: {
-                "Bring all users up to date for XP rewards": []
+                ["Bring all users up to date for XP rewards. Use only when options have had" +
+                    " major changes"]: []
             },
             permission: Permission.UserKick,
             availability: Availability.GuildOnly

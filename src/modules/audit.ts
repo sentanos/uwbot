@@ -8,7 +8,7 @@ export class AuditModule extends Module {
 
     constructor(bot: Bot) {
         super(bot, "audit");
-        this.channel = this.bot.client.channels.get(this.bot.config.audit.channel) as TextChannel;
+        this.channel = this.bot.guild.channels.get(this.bot.config.audit.channel) as TextChannel;
     }
 
     private getPermaLink(guild: Snowflake, channel: Snowflake, message: Snowflake) {

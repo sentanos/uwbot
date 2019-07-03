@@ -3,22 +3,31 @@ import {Message, MessageReaction, Snowflake, User} from "discord.js";
 import {PinModuleConfig} from "../config";
 import {Database} from "sqlite";
 import {Bot} from "../bot";
+import {AuditModule} from "./audit";
+import {PersistentChannelList} from "../util";
 
 export class PinModule extends Module {
     private readonly config: PinModuleConfig;
     private readonly DB: Database;
+    private audit: AuditModule;
+    public exclude: PersistentChannelList;
 
     constructor(bot: Bot) {
-        super(bot, "pin");
+        super(bot, "pin", ["audit"]);
         this.DB = this.bot.DB;
         this.config = this.bot.config.pin;
+        this.exclude = new PersistentChannelList(this.bot.DB, "pinExclude");
+    }
+
+    public async initialize() {
+        this.audit = this.bot.getModule("audit") as AuditModule;
         this.bot.client.on("messageReactionAdd", this.messageReactionAdd.bind(this));
         this.bot.client.on("messageReactionRemove", this.messageReactionRemove.bind(this));
     }
 
     // Unpin the given message. If creator is specified, make sure that the message pinner's ID
     // matches. Otherwise, unpin no matter who the original pinner was.
-    public async unpin(message: Message, creator?: Snowflake) {
+    private async unpin(message: Message, user?: User) {
         await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
         try {
@@ -28,7 +37,7 @@ export class PinModule extends Module {
                 return;
             }
             const userID: Snowflake = data.userID;
-            if (creator == null || userID === creator) {
+            if (user == null || userID === user.id) {
                 const reactions: MessageReaction | void = message.reactions.get(this.config.emoji);
                 if (reactions == null || reactions.count === 0) {
                     await this.DB.run(`DELETE FROM pinned WHERE messageID = ?`,
@@ -37,10 +46,16 @@ export class PinModule extends Module {
                     if (data.pinMessage != null) {
                         await (await message.channel.messages.fetch(data.pinMessage)).delete();
                     }
+                    if (user instanceof User) {
+                        let _ = this.audit.pinLog(user, message, "unpin");
+                    }
                 } else {
                     const other = (await reactions.users.fetch({limit: 1})).first();
                     await this.DB.run(`UPDATE pinned SET userID = ? WHERE messageID = ?`,
                         other.id, message.id);
+                    if (user instanceof User) {
+                        let _ = this.audit.pinChangeLog(user, other, message);
+                    }
                 }
             }
             await this.DB.exec("COMMIT TRANSACTION");
@@ -51,17 +66,17 @@ export class PinModule extends Module {
         await this.bot.transactionLock.release();
     }
 
-    public async pin(message: Message, creator: Snowflake) {
+    private async pin(message: Message, user: User) {
         await this.bot.transactionLock.acquire();
         await this.DB.exec("BEGIN TRANSACTION");
         let pinMessageListener: (Message) => Promise<void>;
         try {
             await this.DB.run(`INSERT INTO pinned(messageID, userID) VALUES(?, ?)`,
-                message.id, creator);
+                message.id, user.id);
             pinMessageListener = async (pinMessage: Message) => {
                 // There is no way to actually check what the system message is... so we just
                 // have to hope it is the pin message?
-                if (pinMessage.system) {
+                if (pinMessage.system && pinMessage.type === "PINS_ADD") {
                     await this.DB.run(`UPDATE pinned SET pinMessage = ? WHERE messageID = ?`,
                         pinMessage.id, message.id);
                     await this.DB.exec("COMMIT TRANSACTION");
@@ -70,6 +85,7 @@ export class PinModule extends Module {
             };
             this.bot.client.on("message", pinMessageListener);
             await message.pin();
+            let _ = this.audit.pinLog(user, message, "pin");
         } catch (err) {
             console.error("Error while processing transaction, rolling back: " + err.stack);
             await this.DB.exec("ROLLBACK TRANSACTION");
@@ -80,25 +96,31 @@ export class PinModule extends Module {
         await this.bot.transactionLock.release();
     }
 
-    public async messageReactionAdd(reaction: MessageReaction, user: User) {
+    private async messageReactionAdd(reaction: MessageReaction, user: User) {
         if (reaction.message.partial) {
             await reaction.message.fetch();
+        }
+        if (await this.exclude.has(reaction.message.channel.id)) {
+            return;
         }
         if (reaction.message.guild != null
             && !reaction.message.pinned
             && reaction.emoji.name === this.config.emoji) {
-            return this.pin(reaction.message, user.id);
+            return this.pin(reaction.message, user);
         }
     }
 
-    public async messageReactionRemove(reaction: MessageReaction, user: User) {
+    private async messageReactionRemove(reaction: MessageReaction, user: User) {
         if (reaction.message.partial) {
             await reaction.message.fetch();
+        }
+        if (await this.exclude.has(reaction.message.channel.id)) {
+            return;
         }
         if (reaction.message.guild != null
             && reaction.message.pinned
             && reaction.emoji.name === this.config.emoji) {
-            return this.unpin(reaction.message, user.id);
+            return this.unpin(reaction.message, user);
         }
     }
 }

@@ -34,3 +34,6 @@ CREATE TABLE whitelist(
 CREATE TABLE xpExclude(
     channelID TEXT PRIMARY KEY
 );
+CREATE TABLE pinExclude(
+    channelID TEXT PRIMARY KEY
+);

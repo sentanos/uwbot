@@ -27,11 +27,16 @@ export type XPModuleConfig = {
     reward: Snowflake
 }
 
+export type AuditModuleConfig = {
+    channel: Snowflake
+}
+
 export type BotConfig = {
     guild: Snowflake,
     client: ClientOptions,
     commands: CommandsModuleConfig,
     anon: AnonModuleConfig,
     pin: PinModuleConfig,
-    xp: XPModuleConfig
+    xp: XPModuleConfig,
+    audit: AuditModuleConfig
 }

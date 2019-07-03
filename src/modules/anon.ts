@@ -12,6 +12,7 @@ import {generateUID, random, randomColor, Queue} from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
+import {AuditModule} from "./audit";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -53,8 +54,8 @@ export class MessageRecords {
     }
 
     public addMessage(anonUser: AnonUser, message: Message): void {
-        const record = new Record(anonUser.user.id, message.id, anonUser.getAlias(),
-            message.createdAt, this.lifetime);
+        const record = new Record(anonUser.user.id, message.id, message.channel.id,
+            anonUser.getAlias(), message.createdAt, this.lifetime);
         this.records.enqueue(record);
         this.prune();
         this.lastRecords.set(message.channel.id, record);
@@ -76,14 +77,16 @@ export class Record {
     readonly userID: Snowflake;
     private time: Date;
     readonly messageID: Snowflake;
+    readonly channelID: Snowflake;
     readonly alias: AnonAlias;
     // Number of seconds after time until record expires.
     readonly lifetime: number;
 
-    constructor(userID: Snowflake, messageID: Snowflake, alias: AnonAlias, time: Date,
-                lifetime: number) {
+    constructor(userID: Snowflake, messageID: Snowflake, channelID: Snowflake, alias: AnonAlias,
+                time: Date, lifetime: number) {
         this.userID = userID;
         this.messageID = messageID;
+        this.channelID = channelID;
         this.alias = alias;
         this.time = time;
         this.lifetime = lifetime;
@@ -105,17 +108,22 @@ export class AnonModule extends Module {
     private messageRecords: MessageRecords;
     private readonly maxID: number;
     private readonly DB: sqlite.Database;
+    private audit: AuditModule;
 
     constructor(bot: Bot) {
-        super(bot, "anon");
+        super(bot, "anon", ["audit"]);
         this.guild = this.bot.guild;
         this.DB = this.bot.DB;
         this.maxID = this.bot.config.anon.maxID;
         this.users = new Map<Snowflake, AnonUser>();
         this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
             this.bot.config.anon.lifetime);
-        this.bot.getChannelByName("anonymous").send("I was restarted due to updates so IDs have" +
-            " been reset");
+    }
+
+    public async initialize() {
+        this.audit = this.bot.getModule("audit") as AuditModule;
+        await this.bot.getChannelByName("anonymous").send("I was restarted due to updates so IDs" +
+            " have been reset");
     }
 
     public reset(): void {
@@ -203,6 +211,7 @@ export class AnonModule extends Module {
         const log = this.DB.run("INSERT INTO logs(userID, modAction, target) VALUES(?, ?, ?)",
             mod.id, "unblacklist", blacklistID);
         await Promise.all([deletes, log]);
+        let _ = this.audit.unblacklist(mod, blacklistID);
     }
 
     public newAlias(anonUser: AnonUser): void {
@@ -226,6 +235,7 @@ export class AnonModule extends Module {
         if (record instanceof Record) {
             const blacklistID = await this.blacklistUser(record.userID, mod);
             this.deleteAnonUserByID(record.userID);
+            let _ = this.audit.blacklist(mod, blacklistID, record);
             return {
                 blacklistID: blacklistID,
                 anonAlias: record.alias

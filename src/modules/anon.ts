@@ -104,6 +104,7 @@ export class Record {
 export class AnonModule extends Module {
     private users: Map<Snowflake, AnonUser>;
     public readonly guild: Guild;
+    private readonly filtered: string[];
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
     private readonly maxID: number;
@@ -115,6 +116,7 @@ export class AnonModule extends Module {
         this.guild = this.bot.guild;
         this.DB = this.bot.DB;
         this.maxID = this.bot.config.anon.maxID;
+        this.filtered = require(this.bot.config.anon.filterLocation);
         this.users = new Map<Snowflake, AnonUser>();
         this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
             this.bot.config.anon.lifetime);
@@ -298,10 +300,14 @@ export class AnonModule extends Module {
             channel = channelOpt;
         }
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
+        const content: string = handler.getRawContent(message.content, offset);
+        for (let i = 0; i < this.filtered.length; i++) {
+            if (content.includes(this.filtered[i])) {
+                throw new Error("Filtered words")
+            }
+        }
         return (await this.getAnonUser(message.author)).send(
-            channel,
-            handler.getRawContent(message.content, offset)
-        )
+            channel, content)
     }
 }
 

@@ -11,7 +11,8 @@
   "anon": {
     "maxID": 1000,
     "maxInactiveRecords": 1000,
-    "lifetime": 43200
+    "lifetime": 43200,
+    "filterLocation": "filtered.json"
   },
   "pin": {
     "emoji": "\uD83D\uDCCC"

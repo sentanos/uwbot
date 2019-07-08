@@ -13,6 +13,7 @@ import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
 import {AuditModule} from "./audit";
+import {join} from "path";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -116,7 +117,7 @@ export class AnonModule extends Module {
         this.guild = this.bot.guild;
         this.DB = this.bot.DB;
         this.maxID = this.bot.config.anon.maxID;
-        this.filtered = require(this.bot.config.anon.filterLocation);
+        this.filtered = require(join("..", "..", this.bot.config.anon.filterLocation));
         this.users = new Map<Snowflake, AnonUser>();
         this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
             this.bot.config.anon.lifetime);
@@ -301,8 +302,9 @@ export class AnonModule extends Module {
         }
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         const content: string = handler.getRawContent(message.content, offset);
+        const cleaned: string = content.toLowerCase().replace(/[^a-z]/g, "");
         for (let i = 0; i < this.filtered.length; i++) {
-            if (content.includes(this.filtered[i])) {
+            if (cleaned.includes(this.filtered[i])) {
                 throw new Error("Filtered words")
             }
         }

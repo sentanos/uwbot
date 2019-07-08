@@ -74,8 +74,6 @@ export class PinModule extends Module {
             await this.DB.run(`INSERT INTO pinned(messageID, userID) VALUES(?, ?)`,
                 message.id, user.id);
             pinMessageListener = async (pinMessage: Message) => {
-                // There is no way to actually check what the system message is... so we just
-                // have to hope it is the pin message?
                 if (pinMessage.system && pinMessage.type === "PINS_ADD") {
                     await this.DB.run(`UPDATE pinned SET pinMessage = ? WHERE messageID = ?`,
                         pinMessage.id, message.id);

@@ -5,7 +5,8 @@
   },
   "commands": {
     "prefix": ">",
-    "separator": " "
+    "separator": " ",
+    "requiredRole": "enter_role_id_here"
   },
   "anon": {
     "maxID": 1000,

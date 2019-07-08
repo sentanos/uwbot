@@ -23,7 +23,7 @@ export class WhitelistGet extends RequiresWhitelist {
             usages: {
                 "Gets whitelisted channels for certain bot commands": []
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         });
     }

@@ -64,32 +64,6 @@ export class Commands extends Command {
     }
 }
 
-export class PinnedBy extends Command {
-    constructor(bot) {
-        super(bot, {
-            names: ["pinnedby", "pinner", "whopinned"],
-            usages: {
-                "Show who pinned a message using the pin feature": ["messageID"]
-            },
-            permission: Permission.None,
-            availability: Availability.GuildOnly
-        });
-    }
-
-    async exec(message: Message, messageID: string) {
-        const row = await this.bot.DB.get(`SELECT userID FROM pinned WHERE messageID = ?`,
-            messageID);
-        if (row == null) {
-            throw new Error("SAFE: Message not found")
-        }
-        const member = await this.bot.guild.members.fetch(row.userID);
-        if (member == null) {
-            return message.reply(row.userID);
-        } else {
-            return message.reply(member.user.tag);
-        }
-    }
-}
 
 export class Source extends Command {
     constructor(bot) {

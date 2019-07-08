@@ -31,7 +31,8 @@ export type CommandConfig = {
 
 export enum Permission {
     UserKick,
-    None,
+    VerifiedGuildMember,
+    None
 }
 
 export enum Availability {
@@ -95,20 +96,15 @@ export class CommandsModule extends Module {
         return res;
     }
 
-    public checkPermission(user: User | GuildMember, permission: Permission): boolean {
+    // Receives GuildMember _of the bot guild_
+    public checkPermission(user: GuildMember, permission: Permission): boolean {
         switch(permission) {
             case Permission.None:
                 return true;
-        }
-        if (user instanceof GuildMember) {
-            switch (permission) {
-                case Permission.UserKick:
-                    if (user.guild.id === this.bot.guild.id
-                        && user.hasPermission("KICK_MEMBERS")) {
-                        return true;
-                    }
-                    return false;
-            }
+            case Permission.VerifiedGuildMember:
+                return user.roles.has(this.config.requiredRole);
+            case Permission.UserKick:
+                return user.hasPermission("KICK_MEMBERS");
         }
         return false;
     };
@@ -220,12 +216,14 @@ export class Command {
     async run(message?: Message, ...args: string[]): Promise<any> {
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
 
-        let rel: User | GuildMember;
+        let resolved : GuildMember | void;
+        let member: GuildMember;
         const user = message.author;
-        if (message.guild != null) {
-            rel = message.guild.member(user);
+        resolved = this.bot.guild.member(user);
+        if (resolved instanceof GuildMember) {
+            member = resolved;
         } else {
-            rel = user;
+            throw new Error("SAFE: You must be a member of the UW discord to run commands")
         }
 
         if (!(await handler.checkAvailability(message, this.availability))) {
@@ -234,15 +232,15 @@ export class Command {
             } else if (this.availability === Availability.GuildOnly) {
                 throw new Error("SAFE: You may only use that command from a guild");
             } else if (this.availability === Availability.WhitelistedGuildChannelsOnly) {
-                message.author.send("Error: You may only use that command from specific guild" +
-                    " channels. Use \"" + handler.config.prefix + "whitelist get\" to get a list" +
-                    " of these channels.");
+                await message.author.send("Error: You may only use that command from specific" +
+                    " guild channels. Use \"" + handler.config.prefix + "whitelist get\" to get" +
+                    " a list of these channels.");
                 return;
             } else {
                 throw new Error("SAFE: Command is unavailable in current context");
             }
         }
-        if (!handler.checkPermission(rel, this.permission)) {
+        if (!handler.checkPermission(member, this.permission)) {
             throw new Error("SAFE: You do not have permission to run that command");
         }
 

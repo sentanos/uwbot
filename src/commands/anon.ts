@@ -24,7 +24,7 @@ export class AnonCommand extends RequiresAnon {
             usages: {
                 "Send an anonymous message to the #anonymous channel": ["message"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }
@@ -41,7 +41,7 @@ export class Relationships extends RequiresAnon {
             usages: {
                 "Send an anonymous message to the #relationships channel": ["message"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }
@@ -58,7 +58,7 @@ export class Serious extends RequiresAnon {
             usages: {
                 "Send an anonymous message to the #serious channel": ["message"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }
@@ -75,7 +75,7 @@ export class MessageCommand extends RequiresAnon {
             usages: {
                 "Send an anonymous message to another anonymous user": ["id", "message"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }
@@ -103,7 +103,7 @@ export class NewID extends RequiresAnon {
                 "Get a random new anonymous ID": [],
                 "Set your anonymous ID to the given ID": ["id"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }
@@ -216,7 +216,7 @@ export class SetColor extends RequiresAnon {
                 "Set anon color to the given hex color": ["hex"],
                 "Set anon color to the given r, g, b value": ["r", "g", "b"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.All
         })
     }

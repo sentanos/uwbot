@@ -25,7 +25,7 @@ export class XPCommand extends RequiresXP {
                 "Get your XP profile": [],
                 "Get another user's XP profile": ["nickname/username/tag/userID"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -57,7 +57,7 @@ export class XPLeaderboard extends RequiresXP {
                 "Get the top 10 users with the highest XP": [],
                 "Get a specific page of the XP leaderboard. Each page has 10 users.": ["page"]
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -107,7 +107,7 @@ export class XPOptionsGet extends RequiresXP {
             usages: {
                 "Gets all current XP options": []
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -143,7 +143,7 @@ export class XPExcludeGet extends RequiresXP {
             usages: {
                 "Gets channels excluded from XP receiving": []
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }

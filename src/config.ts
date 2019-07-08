@@ -2,7 +2,8 @@ import {ClientOptions, Snowflake} from "discord.js";
 
 export type CommandsModuleConfig = {
     prefix: string,
-    separator: string
+    separator: string,
+    requiredRole: string
 }
 
 export type AnonModuleConfig = {

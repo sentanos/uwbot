@@ -23,7 +23,7 @@ export class PinExcludeGet extends RequiresPin {
             usages: {
                 "Gets channels excluded from having pins enabled": []
             },
-            permission: Permission.None,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -84,5 +84,32 @@ export class PinExcludeRemove extends RequiresPin {
     async exec(message: Message, channel: string) {
         await this.pin.exclude.remove(channel);
         return message.channel.send("Removed channel from exclusion list");
+    }
+}
+
+export class PinnedBy extends Command {
+    constructor(bot) {
+        super(bot, {
+            names: ["pinnedby", "pinner", "whopinned"],
+            usages: {
+                "Show who pinned a message using the pin feature": ["messageID"]
+            },
+            permission: Permission.VerifiedGuildMember,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message, messageID: string) {
+        const row = await this.bot.DB.get(`SELECT userID FROM pinned WHERE messageID = ?`,
+            messageID);
+        if (row == null) {
+            throw new Error("SAFE: Message not found")
+        }
+        const member = await this.bot.guild.members.fetch(row.userID);
+        if (member == null) {
+            return message.reply(row.userID);
+        } else {
+            return message.reply(member.user.tag);
+        }
     }
 }

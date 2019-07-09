@@ -20,7 +20,7 @@ export class Bot {
     public readonly DB: sqlite.Database;
     public readonly guild: Guild;
     public readonly config: BotConfig;
-    public readonly filter: string[]
+    public readonly filter: string[];
     public readonly transactionLock: Lock;
     private readonly modules: Modules;
     private readonly loaded: Set<string>;

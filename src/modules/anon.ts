@@ -4,7 +4,8 @@ import {
     Guild,
     Message,
     MessageEmbed,
-    TextBasedChannelFields, PartialTextBasedChannelFields, Channel, TextChannel, DMChannel
+    TextChannel,
+    DMChannel
 } from "discord.js"
 import {createHash} from "crypto";
 import * as sqlite from "sqlite";
@@ -105,7 +106,7 @@ export class Record {
 export class AnonModule extends Module {
     private users: Map<Snowflake, AnonUser>;
     public readonly guild: Guild;
-    private readonly filtered: string[];
+    private readonly filter: string[];
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
     private readonly maxID: number;
@@ -117,7 +118,7 @@ export class AnonModule extends Module {
         this.guild = this.bot.guild;
         this.DB = this.bot.DB;
         this.maxID = this.bot.config.anon.maxID;
-        this.filtered = require(join("..", "..", this.bot.config.anon.filterLocation));
+        this.filter = this.bot.filter;
         this.users = new Map<Snowflake, AnonUser>();
         this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
             this.bot.config.anon.lifetime);
@@ -303,8 +304,8 @@ export class AnonModule extends Module {
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         const content: string = handler.getRawContent(message.content, offset);
         const cleaned: string = content.toLowerCase().replace(/[^a-z]/g, "");
-        for (let i = 0; i < this.filtered.length; i++) {
-            if (cleaned.includes(this.filtered[i])) {
+        for (let i = 0; i < this.filter.length; i++) {
+            if (cleaned.includes(this.filter[i])) {
                 throw new Error("Filtered words")
             }
         }

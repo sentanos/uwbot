@@ -16,11 +16,17 @@ if (configPath == null) {
 }
 const databasePath = process.env.DATABASE_PATH;
 if (databasePath == null) {
-    throw new Error("No database file location specified");
+    throw new Error("No database file specified");
+}
+
+const filterPath = process.env.FILTER_PATH;
+if (filterPath == null) {
+    throw new Error("No filter file specified");
 }
 
 (async () => {
     const config: BotConfig = JSON.parse(readFileSync(configPath, "utf8"));
+    const filter: string[] = JSON.parse(readFileSync(filterPath, "utf8"));
 
     const client = new Client(config.client);
 
@@ -32,7 +38,7 @@ if (databasePath == null) {
     }
 
     client.once("ready", async () => {
-        const bot = new Bot(client, DB, config);
+        const bot = new Bot(client, DB, config, filter);
         await bot.initialize();
         console.log("Bot ready");
     });

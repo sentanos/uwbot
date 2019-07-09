@@ -9,8 +9,7 @@ export type CommandsModuleConfig = {
 export type AnonModuleConfig = {
     maxID: number,
     maxInactiveRecords: number,
-    lifetime: number,
-    filterLocation: string
+    lifetime: number
 }
 
 export type PinModuleConfig = {

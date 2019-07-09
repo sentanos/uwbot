@@ -20,14 +20,16 @@ export class Bot {
     public readonly DB: sqlite.Database;
     public readonly guild: Guild;
     public readonly config: BotConfig;
+    public readonly filter: string[]
     public readonly transactionLock: Lock;
     private readonly modules: Modules;
     private readonly loaded: Set<string>;
 
-    constructor(client: Client, DB: sqlite.Database, config: BotConfig) {
+    constructor(client: Client, DB: sqlite.Database, config: BotConfig, filter: string[]) {
         this.client = client;
         this.DB = DB;
         this.config = config;
+        this.filter = filter;
         this.guild = client.guilds.get(config.guild);
         this.transactionLock = new Lock();
         this.modules = {};

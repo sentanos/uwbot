@@ -14,7 +14,6 @@ import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
 import {AuditModule} from "./audit";
-import {join} from "path";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record

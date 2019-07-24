@@ -1,4 +1,4 @@
-import {User, GuildMember, Message} from "discord.js";
+import {GuildMember, Message} from "discord.js";
 import {Bot} from "../bot";
 import {Module} from "../module";
 import {getNthIndex} from "../util";

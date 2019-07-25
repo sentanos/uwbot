@@ -11,14 +11,6 @@ export class AuditModule extends Module {
         this.channel = this.bot.guild.channels.get(this.bot.config.audit.channel) as TextChannel;
     }
 
-    private getPermaLink(guild: Snowflake, channel: Snowflake, message: Snowflake) {
-        return `https://discordapp.com/channels/${guild}/${channel}/${message}`;
-    }
-
-    private getPermaLinkFromMessage(message: Message) {
-        return this.getPermaLink(message.guild.id, message.channel.id, message.id);
-    }
-
     public async log(title: string, author: User | void, description: string,
         targetMessage: string, url: string, ...fields: {name: string, value: string}[]) :
         Promise<void> {
@@ -44,15 +36,14 @@ export class AuditModule extends Module {
     public async pinLog(user: User, message: Message, type: "pin" | "unpin"): Promise<void> {
         return this.log("Message " + (type === "pin" ? "Pinned" : "Unpinned"), user,
             `User ${user.tag} \`(ID: ${user.id})\` ${type}ned the following message \
-            \`(ID: ${message.id})\`:`, message.content, this.getPermaLinkFromMessage(message));
+            \`(ID: ${message.id})\`:`, message.content, message.url);
     }
 
     public async pinChangeLog(user: User, other: User, message: Message): Promise<void> {
         return this.log("Message Pin Change", user,
             `User ${user.tag} \`(ID: ${user.id})\` removed their pin reaction from the \
             message \`(ID: ${message.id})\` below, which makes user ${other.tag} \
-            \`(ID: ${other.id})\` the new owner of the pin.`, message.content,
-            this.getPermaLinkFromMessage(message));
+            \`(ID: ${other.id})\` the new owner of the pin.`, message.content, message.url);
     }
 
     public async blacklist(user: User, blacklistID: string, record: Record) {
@@ -62,7 +53,7 @@ export class AuditModule extends Module {
         return this.log("Anon User Blacklisted", user, `User ${user.tag} \
             \`(ID: ${user.id})\` blacklisted anon **${alias}** \`(blacklist ID: ${blacklistID})\` \
             because of the following message \`(ID: ${message.id})\`:`,
-            message.embeds[0].description, this.getPermaLinkFromMessage(message))
+            message.embeds[0].description, message.url)
     }
 
     public async unblacklist(user: User, blacklistID: string) {

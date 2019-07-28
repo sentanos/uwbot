@@ -113,6 +113,7 @@ export class XPOptionsGet extends RequiresXP {
     }
 
     async exec(message: Message) {
+        const config = this.xp.config;
         return message.channel.send(new MessageEmbed()
             .setTitle("XP Module Options")
             .setDescription("Users can receive XP up to a `Block Maximum` in one `Block" +
@@ -122,88 +123,17 @@ export class XPOptionsGet extends RequiresXP {
                 " (decay is checked for all users after every `Check Interval`. `Reward Role`" +
                 " will be given to uses who have a higher XP count than `Reward Threshold` and a" +
                 " higher rolling XP count than `Rolling Reward Threshold`.")
-            .addField("Block Interval", formatInterval(this.xp.blockInterval), true)
-            .addField("Block Maximum", this.xp.blockMaximum + " XP", true)
-            .addField("Rolling Interval", formatInterval(this.xp.rollingInterval), true)
-            .addField("Decay Interval", formatInterval(this.xp.decayInterval), true)
-            .addField("Decay XP", this.xp.decayXp + " XP", true)
-            .addField("Check Interval", formatInterval(this.xp.checkInterval), true)
-            .addField("Reward Threshold", this.xp.rewardThreshold + " XP", true)
-            .addField("Rolling Reward Threshold", this.xp.rollingRewardThreshold + " XP", true)
-            .addField("Reward Role", this.bot.guild.roles.get(this.xp.reward).name +
-                " (" + this.xp.reward + ")")
+            .addField("Block Interval", formatInterval(config.blockInterval), true)
+            .addField("Block Maximum", config.blockMaximum + " XP", true)
+            .addField("Rolling Interval", formatInterval(config.rollingInterval), true)
+            .addField("Decay Interval", formatInterval(config.decayInterval), true)
+            .addField("Decay XP", config.decayXp + " XP", true)
+            .addField("Check Interval", formatInterval(config.checkInterval), true)
+            .addField("Reward Threshold", config.rewardThreshold + " XP", true)
+            .addField("Rolling Reward Threshold", config.rollingRewardThreshold + " XP", true)
+            .addField("Reward Role", this.bot.guild.roles.get(config.reward).name +
+                " (" + config.reward + ")")
             .setColor(this.bot.displayColor()));
-    }
-}
-
-export class XPExcludeGet extends RequiresXP {
-    constructor(bot: Bot) {
-        super(bot, {
-            names: ["xp exclude get"],
-            usages: {
-                "Gets channels excluded from XP receiving": []
-            },
-            permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
-        });
-    }
-
-    async exec(message: Message) {
-        const ids: Snowflake[] = await this.xp.exclude.getChannels();
-        let channels: string[] = [];
-        for (let i = 0; i < ids.length; i++) {
-            const id: Snowflake = ids[i];
-            if (this.bot.guild.channels.has(id)) {
-                channels.push("#" + this.bot.guild.channels.get(id).name)
-            } else {
-                channels.push(id);
-            }
-        }
-        return message.channel.send(new MessageEmbed()
-            .setTitle("Excluded Channels")
-            .setDescription(channels.join("\n"))
-            .setColor(this.bot.displayColor()));
-    }
-}
-
-export class XPExcludeAdd extends RequiresXP {
-    constructor(bot: Bot) {
-        super(bot, {
-            names: ["xp exclude add"],
-            usages: {
-                "Adds a channel to the XP exclusion list": ["channelID"]
-            },
-            permission: Permission.UserKick,
-            availability: Availability.GuildOnly
-        });
-    }
-
-    async exec(message: Message, channel: string) {
-        if (!this.bot.guild.channels.has(channel)) {
-            throw new Error("SAFE: Channel does not exist. Make sure to use the channel ID, NOT" +
-                " the channel name.");
-        }
-        await this.xp.exclude.add(channel);
-        return message.channel.send("Added channel #" + message.guild.channels.get(channel).name +
-            " to exclusion list");
-    }
-}
-
-export class XPExcludeRemove extends RequiresXP {
-    constructor(bot: Bot) {
-        super(bot, {
-            names: ["xp exclude remove"],
-            usages: {
-                "Removes a channel from the XP exclusion list": ["channelID"]
-            },
-            permission: Permission.UserKick,
-            availability: Availability.GuildOnly
-        });
-    }
-
-    async exec(message: Message, channel: string) {
-        await this.xp.exclude.remove(channel);
-        return message.channel.send("Removed channel from exclusion list");
     }
 }
 

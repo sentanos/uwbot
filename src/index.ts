@@ -1,10 +1,8 @@
 import {Client} from "discord.js"
-import {Bot} from "./src/bot"
-import {readFileSync, existsSync} from "fs";
-import * as sqlite from "sqlite";
-import {BotConfig} from "./src/config";
-
-const initializePath = "./db/create.sql";
+import {Bot} from "./bot"
+import {readFileSync} from "fs";
+import {BotConfig} from "./config";
+import {Sequelize} from "sequelize";
 
 const token = process.env.DISCORD_TOKEN;
 if (token == null) {
@@ -30,15 +28,13 @@ if (filterPath == null) {
 
     const client = new Client(config.client);
 
-    const mustInitializeDB: boolean = !existsSync(databasePath);
-    const DB: sqlite.Database = await sqlite.open(databasePath);
-    if (mustInitializeDB) {
-        const commands = readFileSync(initializePath, "utf8");
-        await DB.exec(commands);
-    }
+    const sequelize: Sequelize = new Sequelize({
+        dialect: 'sqlite',
+        storage: databasePath
+    });
 
     client.once("ready", async () => {
-        const bot = new Bot(client, DB, config, filter);
+        const bot = new Bot(client, sequelize, config, filter);
         await bot.initialize();
         console.log("Bot ready");
     });

@@ -1,6 +1,6 @@
 import {Module} from "../module";
 import {Bot} from "../bot";
-import {Message, MessageEmbed, Snowflake, TextChannel, User} from "discord.js";
+import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
 
 export class AuditModule extends Module {

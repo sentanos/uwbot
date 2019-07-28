@@ -7,52 +7,52 @@ import {
 } from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
-import * as sqlite from "sqlite";
-import {fromSQLiteDate, PersistentChannelList, timeDiff, toSQLiteDate} from "../util";
+import {PersistentChannelList, timeDiff} from "../util";
+import {XPModuleConfig} from "../config";
+import {Xp} from "../database/models/xp";
+import {Sequelize, Op} from "sequelize";
+import {XpLogs} from "../database/models/xpLogs";
+import {Availability, Permission} from "./commands";
 
 export type XP = number;
 
 export class XPModule extends Module {
-    // All time fields settings are in seconds
-
     public readonly exclude: PersistentChannelList;
-    // The time interval until a block resets
-    public blockInterval: number;
-    // The maximum XP a single user can earn in a block
-    // Must be greater than 1
-    public blockMaximum: XP;
-    // The time interval over which to calculate rolling XP
-    public rollingInterval: number;
-    // The time interval between decay checks
-    public checkInterval: number;
-    // The time interval between XP decays
-    public decayInterval: number;
-    // The number of XP decayed after every decayInterval
-    public decayXp: number;
-    // The minimum XP required for reward
-    public rewardThreshold: XP;
-    // The minimum rolling XP required for reward
-    public rollingRewardThreshold: XP;
-    // Reward role ID
-    public reward: Snowflake;
-    private readonly DB: sqlite.Database;
+    public config: XPModuleConfig;
+    private readonly DB: Sequelize;
 
     constructor(bot: Bot) {
         super(bot, "xp");
-        const config = this.bot.config.xp;
         this.DB = this.bot.DB;
-        this.exclude = new PersistentChannelList(this.bot.DB, "xpExclude");
-        this.blockInterval = config.blockInterval;
-        this.blockMaximum = config.blockMaximum;
-        this.checkInterval = config.checkInterval;
-        this.rollingInterval = config.rollingInterval;
-        this.decayInterval = config.decayInterval;
-        this.decayXp = config.decayXp;
-        this.rewardThreshold = config.rewardThreshold;
-        this.rollingRewardThreshold = config.rollingRewardThreshold;
-        this.reward = config.reward;
+        this.exclude = new PersistentChannelList(this.bot, "xpExclude");
+        this.exclude.addCommands({
+            listName: "XP Disabled Channels",
+            get: {
+                command: "xp exclude get",
+                usage: "Get channels with XP disabled",
+                permission: Permission.VerifiedGuildMember,
+                availability: Availability.WhitelistedGuildChannelsOnly
+            },
+            add: {
+                command: "xp exclude add",
+                usage: "Disable XP earning in a channel",
+                permission: Permission.UserKick,
+                availability: Availability.WhitelistedGuildChannelsOnly
+            },
+            remove: {
+                command: "xp exclude remove",
+                usage: "Enable XP earning in a channel where earning was previous disabled",
+                permission: Permission.UserKick,
+                availability: Availability.WhitelistedGuildChannelsOnly
+            }
+        });
+        this.config = this.bot.config.xp;
         this.bot.client.on("message", this.onMessage.bind(this));
-        setInterval(this.checkDecay.bind(this), this.decayInterval * 1000);
+        setInterval(this.checkDecay.bind(this), this.config.decayInterval * 1000);
+    }
+
+    public async initialize() {
+        await this.exclude.initialize();
     }
 
     public static levelFromXp(xp: XP): number {
@@ -73,20 +73,20 @@ export class XPModule extends Module {
     private async checkReward(user: Snowflake): Promise<boolean> {
         const xp: XP = await this.getXP(user);
         const rolling: XP = await this.getRollingXP(user);
-        return xp >= this.rewardThreshold && rolling >= this.rollingRewardThreshold;
+        return xp >= this.config.rewardThreshold && rolling >= this.config.rollingRewardThreshold;
     }
 
     private async addReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.reward) == null) {
-            await member.roles.add(this.reward);
+        if (member.roles.get(this.config.reward) == null) {
+            await member.roles.add(this.config.reward);
             return true;
         }
         return false;
     }
 
     private async removeReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.reward) != null) {
-            await member.roles.remove(this.reward);
+        if (member.roles.get(this.config.reward) != null) {
+            await member.roles.remove(this.config.reward);
             return true;
         }
         return false;
@@ -121,7 +121,7 @@ export class XPModule extends Module {
     }
 
     public async updateAll(): Promise<void> {
-        const rewarded = await this.bot.guild.roles.get(this.reward).members.array();
+        const rewarded = await this.bot.guild.roles.get(this.config.reward).members.array();
         let jobs = [];
         for (let i = 0; i < rewarded.length; i++) {
             jobs.push((async () => {
@@ -130,8 +130,13 @@ export class XPModule extends Module {
                 }
             })());
         }
-        const maybeReward = await this.DB.all("SELECT userID from xp WHERE totalXp >= ?",
-            this.rewardThreshold);
+        const maybeReward = await Xp.findAll({
+            where: {
+                totalXp: {
+                    [Op.gte]: this.config.rewardThreshold
+                }
+            }
+        });
         for (let i = 0; i < maybeReward.length; i++) {
             jobs.push(this.updateReward(maybeReward[i].userID));
         }
@@ -139,12 +144,15 @@ export class XPModule extends Module {
     }
 
     public async top(num: number, offset: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
-        return this.DB.all("SELECT userID, totalXp from xp ORDER BY totalXp DESC" +
-            " LIMIT ? OFFSET ?", num, offset);
+        return await Xp.findAll({
+            order: ["totalXp", "DESC"],
+            limit: num,
+            offset: offset
+        });
     }
 
     public async getXP(user: Snowflake): Promise<XP> {
-        const res = await this.DB.get("SELECT totalXp from xp WHERE userID = ?", user);
+        const res: Xp = await Xp.findByPk(user);
         if (res == null) {
             return 0;
         } else {
@@ -153,87 +161,97 @@ export class XPModule extends Module {
     }
 
     public async getRollingXP(user: Snowflake): Promise<XP> {
-        const after: Date = new Date(new Date().getTime() - this.rollingInterval * 1000);
-        const res = await this.DB.get("SELECT SUM(xp) as sum FROM xpHistory WHERE userID = ? AND" +
-            " addTime > ?", user, toSQLiteDate(after));
-        if (res.sum == null) {
+        const after: Date = new Date(new Date().getTime() - this.config.rollingInterval * 1000);
+        const res: number = await XpLogs.sum("xp", {
+            where: {
+                [Op.and]: {
+                    userID: user,
+                    createdAt: {
+                        [Op.gt]: after
+                    }
+                }
+            }
+        });
+        if (isNaN(res)) {
             return 0;
         }
-        return res.sum;
+        return res;
     }
 
-    private async addBlockXP(user: Snowflake, message?: Message): Promise<void> {
-        await this.bot.transactionLock.acquire();
-        await this.DB.exec("BEGIN TRANSACTION");
-        try {
-            const add = 1;
-            let addJob: Promise<any>;
-            const res = await this.DB.get("SELECT totalXp, lastBlock, blockXp FROM xp WHERE userID =" +
-                " ?", user);
-            const newBlock: boolean = res != null && timeDiff(new Date(),
-                fromSQLiteDate(res.lastBlock)) > this.blockInterval * 1000;
-            const unfinishedBlock: boolean = res != null && res.blockXp < this.blockMaximum;
-            if (res == null || newBlock || unfinishedBlock) {
-                if (res == null) {
-                    addJob = this.DB.run("INSERT INTO xp(userID, totalXp, lastBlock, blockXp," +
-                        " lastMessage) VALUES(?, ?, ?, ?, ?)", user, add, toSQLiteDate(new Date()),
-                        add, toSQLiteDate(new Date()));
-                } else if (newBlock) {
-                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, lastBlock = ?, blockXp = ?," +
-                        " lastMessage = ? WHERE userID = ?", res.totalXp + add,
-                        toSQLiteDate(new Date()), add, toSQLiteDate(new Date()), user)
-                } else if (unfinishedBlock) {
-                    addJob = this.DB.run("UPDATE xp SET totalXp = ?, blockXp = ?, lastMessage =" +
-                        " ? WHERE userID = ?", res.totalXp + add, res.blockXp + add,
-                        toSQLiteDate(new Date()), user)
+    private async addBlockXP(user: Snowflake, message?: Message) {
+        const add = 1;
+        let added = false;
+        return this.DB.transaction((t) => {
+            return Xp.findByPk(user, {transaction: t}).then((userXp) => {
+                if (userXp == null) {
+                    added = true;
+                    return Xp.create({
+                        userID: user,
+                        totalXp: add,
+                        lastBlock: new Date(),
+                        blockXp: add,
+                        lastMessage: new Date()
+                    }, {transaction: t});
+                } else {
+                    const newBlock: boolean = timeDiff(new Date(), userXp.lastBlock) >
+                        this.config.blockInterval * 1000;
+                    const unfinishedBlock: boolean = userXp.blockXp < this.config.blockMaximum;
+                    if (newBlock || unfinishedBlock) {
+                        userXp.totalXp += add;
+                        userXp.blockXp += add;
+                        added = true;
+                    }
+                    if (newBlock) {
+                        userXp.lastBlock = new Date();
+                    }
+                    userXp.lastMessage = new Date();
+                    return userXp.save({transaction: t});
                 }
-                const addHistoryJob = this.DB.run(
-                    "INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user, add);
-                await Promise.all([addJob, addHistoryJob]);
-            } else {
-                await this.DB.run("UPDATE xp SET lastMessage = ? WHERE userID = ?",
-                    toSQLiteDate(new Date()), user);
+            });
+        }).then(async () => {
+            if (added) {
+                await XpLogs.create({
+                    userID: user,
+                    xp: add
+                });
             }
-            await this.DB.exec("COMMIT TRANSACTION");
-        } catch (err) {
-            console.error("Error adding XP for user " + user + ": " + err.stack);
-            await this.DB.exec("ROLLBACK TRANSACTION");
-        }
-        await this.bot.transactionLock.release();
-        await this.updateReward(user, message.channel);
+            return this.updateReward(user, message.channel);
+        }).catch((err) => {
+            console.error(`Block XP failed for user ${user}: ${err.stack}`);
+        });
     }
 
     private async checkDecay(): Promise<void> {
-        await this.bot.transactionLock.acquire();
-        await this.DB.exec("BEGIN TRANSACTION");
         let rewardCheckUsers = [];
         let rewardChecks = [];
-        try {
-            const rows = await this.DB.all("SELECT userID, totalXp from xp WHERE" +
-                " julianday(datetime('now')) - julianday(lastMessage) > ? AND" +
-                " julianday(datetime('now')) - julianday(lastDecay) > ?",
-                this.decayInterval / 86400, this.decayInterval / 86400);
-            let jobs = [];
-            for (let i = 0; i < rows.length; i++) {
-                const user = rows[i].userID;
-                const xp = rows[i].totalXp;
-                if (xp > 0) {
-                    const newXp: XP = Math.max(0, xp - this.decayXp);
-                    const decay: XP = Math.max(xp * -1, this.decayXp * -1);
-                    jobs.push(this.DB.run("UPDATE xp SET totalXp = ?, lastDecay = ? WHERE userID" +
-                        " = ?", newXp, toSQLiteDate(new Date()), user));
-                    jobs.push(this.DB.run("INSERT INTO xpHistory(userID, xp) VALUES(?, ?)", user,
-                        decay));
-                    rewardCheckUsers.push(user);
-                }
+        const interval = this.config.decayInterval / 86400;
+        const userXps: Xp[] = await Xp.findAll({
+            where: Sequelize.and(
+                Sequelize.where(Sequelize.literal("julianday(datetime('now')) -" +
+                    " julianday(lastMessage)"), ">", Sequelize.literal(interval.toString())),
+                Sequelize.where(Sequelize.literal("julianday(datetime('now')) -" +
+                    " julianday(lastDecay)"), ">", Sequelize.literal(interval.toString()))
+            )
+        });
+        let jobs = [];
+        for (let i = 0; i < userXps.length; i++) {
+            const userXp: Xp = userXps[i];
+            const xp: XP = userXp.totalXp;
+            if (xp > 0) {
+                const newXp: XP = Math.max(0, xp - this.config.decayXp);
+                const decay: XP = Math.max(xp * -1, this.config.decayXp * -1);
+                jobs.push(userXp.update({
+                    totalXp: newXp,
+                    lastDecay: new Date()
+                }));
+                jobs.push(XpLogs.create({
+                    userID: userXp.userID,
+                    xp: decay
+                }));
+                rewardCheckUsers.push(userXp.userID);
             }
-            await Promise.all(jobs);
-            await this.DB.exec("COMMIT TRANSACTION");
-        } catch (err) {
-            console.error("Error running XP decay: " + err.stack);
-            await this.DB.exec("ROLLBACK TRANSACTION");
         }
-        await this.bot.transactionLock.release();
+        await Promise.all(jobs);
         if (rewardCheckUsers.length > 0) {
             for (let i = 0; i < rewardCheckUsers.length; i++) {
                 const userID: Snowflake = rewardCheckUsers[i];
@@ -242,7 +260,6 @@ export class XPModule extends Module {
                     user = await this.bot.client.users.fetch(userID);
                     rewardChecks.push(this.updateReward(userID, null, user));
                 } catch (err) {
-                    console.error("Update for user " + userID + " for decay failed: " + err.stack);
                 }
             }
             await Promise.all(rewardChecks);

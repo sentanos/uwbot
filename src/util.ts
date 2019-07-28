@@ -1,9 +1,11 @@
 import {randomBytes} from "crypto";
 import {AnonID} from "./modules/anon";
-import * as uuid from "uuid/v4";
+import uuid from "uuid/v4";
+import {Sequelize, Model, BuildOptions, DataTypes} from "sequelize";
 import {Snowflake} from "discord.js";
-import * as sqlite from "sqlite";
-import {EventEmitter} from "events";
+import {Availability, CommandsModule, Permission} from "./modules/commands";
+import {Bot} from "./bot";
+import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 
 // Returns a random integer from 0 to max
 export const random = (max: number): number => {
@@ -124,51 +126,60 @@ export class Queue<T> {
     }
 }
 
-export class Lock {
-    private locked: boolean;
-    private event: EventEmitter;
+export type PersistentChannelListConfigPart = {
+    command: string,
+    usage: string,
+    permission: Permission,
+    availability: Availability
+}
 
-    constructor() {
-        this.locked = false;
-        this.event = new EventEmitter();
-    }
+export type PersistentChannelListConfig = {
+    listName: string,
+    get: PersistentChannelListConfigPart,
+    add: PersistentChannelListConfigPart,
+    remove: PersistentChannelListConfigPart
+}
 
-    acquire() {
-        return new Promise(resolve => {
-            if (!this.locked) {
-                this.locked = true;
-                return resolve();
-            }
+interface ChannelList extends Model {
+    readonly channelID: string;
+}
 
-            const tryAcquire = () => {
-                if (!this.locked) {
-                    this.locked = true;
-                    this.event.removeListener('release', tryAcquire);
-                    return resolve();
-                }
-            };
-            this.event.on('release', tryAcquire);
-        });
-    }
-
-    release() {
-        this.locked = false;
-        setImmediate(() => this.event.emit('release'));
-    }
+type ChannelListStatic = typeof Model & {
+    new (values?: object, options?: BuildOptions): ChannelList;
 }
 
 export class PersistentChannelList {
-    private readonly DB: sqlite.Database;
-    private readonly table: string;
+    private readonly DB: Sequelize;
+    private readonly bot: Bot;
+    private list: ChannelListStatic;
 
-    constructor(DB: sqlite.Database, table: string) {
-        this.DB = DB;
-        this.table = table;
+    constructor(bot: Bot, name: string) {
+        this.DB = bot.DB;
+        this.list = <ChannelListStatic>this.DB.define(name, {
+            channelID: {
+                primaryKey: true,
+                type: DataTypes.STRING
+            }
+        }, {tableName: name});
+        this.bot = bot;
+    }
+
+    public async initialize(): Promise<void> {
+        await this.list.sync();
+    }
+
+    public addCommands(config: PersistentChannelListConfig): void {
+        const commandsMod = this.bot.getModule("commands") as CommandsModule;
+        commandsMod.addCommand(new ChannelGetCommand(this.bot, this, config.get, config.listName));
+        commandsMod.addCommand(new ChannelAddCommand(this.bot, this, config.add,
+            config.listName.toLowerCase()));
+        commandsMod.addCommand(new ChannelRemoveCommand(this.bot, this, config.remove,
+            config.listName.toLowerCase()));
     }
 
     public async getChannels(): Promise<Snowflake[]> {
         let channels: Snowflake[] = [];
-        const rows = await this.DB.all(`SELECT channelID FROM ${this.table}`);
+        const rows = await this.list.findAll();
         for (let i = 0; i < rows.length; i++) {
             channels.push(rows[i].channelID);
         }
@@ -176,22 +187,26 @@ export class PersistentChannelList {
     }
 
     public async has(channel: Snowflake): Promise<boolean> {
-        const res = await this.DB.get(`SELECT channelID FROM ${this.table} WHERE channelID = ?`,
-            channel);
-        return res != null;
+        return await this.list.findByPk(channel) != null;
     }
 
     public async add(channel: Snowflake): Promise<void> {
         if (await this.has(channel)) {
-            throw new Error("SAFE: Channel is already whitelisted");
+            throw new Error("SAFE: Channel has already been added");
         }
-        await this.DB.run(`INSERT INTO ${this.table}(channelID) VALUES(?)`, channel);
+        await this.list.create({
+            channelID: channel
+        });
     }
 
     public async remove(channel: Snowflake): Promise<void> {
         if (!(await this.has(channel))) {
-            throw new Error("SAFE: Channel is not whitelisted");
+            throw new Error("SAFE: Channel not in list");
         }
-        await this.DB.run(`DELETE FROM ${this.table} WHERE channelID = ?`, channel);
+        await this.list.destroy({
+            where: {
+                channelID: channel
+            }
+        });
     }
 }

@@ -2,14 +2,14 @@ import {
     Client, ColorResolvable,
     Guild, GuildMember, Message, TextChannel, User
 } from "discord.js";
-import * as sqlite from "sqlite";
 import {readdir} from "fs";
 import {join} from "path";
 import {promisify} from "util";
 import {Module} from "./module";
 import {BotConfig} from "./config";
 import {CommandsModule} from "./modules/commands";
-import {Lock} from "./util";
+import {Sequelize} from "sequelize";
+import initializeDB from "./database";
 
 type Modules = {
     [name: string]: Module;
@@ -17,26 +17,26 @@ type Modules = {
 
 export class Bot {
     public readonly client: Client;
-    public readonly DB: sqlite.Database;
+    public readonly DB: Sequelize;
     public readonly guild: Guild;
     public readonly config: BotConfig;
     public readonly filter: string[];
-    public readonly transactionLock: Lock;
     private readonly modules: Modules;
     private readonly loaded: Set<string>;
 
-    constructor(client: Client, DB: sqlite.Database, config: BotConfig, filter: string[]) {
+    constructor(client: Client, sequelize: Sequelize, config: BotConfig, filter: string[]) {
         this.client = client;
-        this.DB = DB;
+        this.DB = sequelize;
         this.config = config;
         this.filter = filter;
         this.guild = client.guilds.get(config.guild);
-        this.transactionLock = new Lock();
         this.modules = {};
         this.loaded = new Set<string>();
     }
 
     public async initialize(): Promise<void> {
+        initializeDB(this.DB);
+        await this.DB.sync();
         const num = await this.loadModules();
         console.log("Loaded " + num + " modules");
     }
@@ -130,13 +130,18 @@ export class Bot {
         return this.modules[name];
     }
 
-    public async forEachClassInFile(location: string, func: (name: string, aClass: any) => Promise<boolean>):
-            Promise<number> {
+    public async forEachClassInFile(location: string, func: (name: string, aClass: any) =>
+        Promise<boolean>, validate?: (filename: string) => boolean): Promise<number> {
+        if (validate == null) {
+            validate = (filename: string) => {
+                return filename.endsWith(".js");
+            }
+        }
         const files = await promisify(readdir)(join(__dirname, location));
         let num = 0;
         for (let i = 0; i < files.length; i++) {
             const filename = files[i];
-            if (filename.endsWith(".js")) {
+            if (validate(filename)) {
                 const items = await import(join(__dirname, location, filename));
                 for (const className in items) {
                     if (className != "__esModule") {

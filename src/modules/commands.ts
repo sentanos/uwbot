@@ -62,13 +62,15 @@ export class CommandsModule extends Module {
 
     public async loadCommands(): Promise<number> {
         return this.bot.forEachClassInFile("./commands",
-                (name: string, constructor: any): Promise<boolean> => {
-            this.addCommand(new constructor(this.bot));
-            return Promise.resolve(true);
-        });
+            (name: string, constructor: any): Promise<boolean> => {
+                this.addCommand(new constructor(this.bot));
+                return Promise.resolve(true);
+            }, (filename: string): boolean => filename.endsWith(".js") &&
+                !filename.endsWith(".tmpl.js"));
     }
 
-    private addCommand(command: Command) {
+
+    public addCommand(command: Command): void {
         this.commands.push(command);
     }
 

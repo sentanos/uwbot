@@ -8,12 +8,12 @@ import {
     DMChannel
 } from "discord.js"
 import {createHash} from "crypto";
-import * as sqlite from "sqlite";
 import {generateUID, random, randomColor, Queue} from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
 import {AuditModule} from "./audit";
+import {Blacklist} from "../database/models/blacklist";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -109,13 +109,13 @@ export class AnonModule extends Module {
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
     private readonly maxID: number;
-    private readonly DB: sqlite.Database;
     private audit: AuditModule;
+
+    // TODO: LOG IN AUDIT!
 
     constructor(bot: Bot) {
         super(bot, "anon", ["audit"]);
         this.guild = this.bot.guild;
-        this.DB = this.bot.DB;
         this.maxID = this.bot.config.anon.maxID;
         this.filter = this.bot.filter;
         this.users = new Map<Snowflake, AnonUser>();
@@ -163,25 +163,29 @@ export class AnonModule extends Module {
         this.users.set(user.id, new AnonUser(this, user, this.randomFreeAlias()));
     }
 
-    public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
-        const res = await this.DB.get("SELECT userID FROM logs WHERE modAction = 'blacklist' AND" +
-            " target = ? ORDER BY actionTime DESC LIMIT 1", blacklistID);
-        if (res == null) {
-            return null;
-        }
-        return res.userID;
-    }
+    // public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
+    //     const res = await this.DB.get("SELECT userID FROM logs WHERE modAction = 'blacklist' AND" +
+    //         " target = ? ORDER BY actionTime DESC LIMIT 1", blacklistID);
+    //     if (res == null) {
+    //         return null;
+    //     }
+    //     return res.userID;
+    // }
 
     public async isBlacklisted(userID: Snowflake): Promise<boolean> {
-        const res = await this.DB.get("SELECT 1 AS exist FROM blacklist WHERE hashed = ?",
-            AnonModule.getHash(userID));
-        return res != null && res.exist === 1;
+        const res: Blacklist | null = await Blacklist.findOne({
+            where: {
+                hashed: AnonModule.getHash(userID)
+            }
+        });
+        return res != null;
     }
 
     private async blacklistIDExists(blacklistID: string): Promise<boolean> {
-        const res = await this.DB.get("SELECT 1 AS exist FROM blacklist WHERE blacklistID" +
-            " = ?", blacklistID);
-        return res != null && res.exist === 1;
+        const res: Blacklist | null = await Blacklist.findOne({
+            where: {blacklistID}
+        });
+        return res != null;
     }
 
     private static getHash(ID: Snowflake) {
@@ -192,16 +196,15 @@ export class AnonModule extends Module {
             .digest('base64');
     }
 
-    private async blacklistUser(userID: Snowflake, mod: User): Promise<string> {
+    private async blacklistUser(userID: Snowflake): Promise<string> {
         if (await this.isBlacklisted(userID)) {
             throw new Error("SAFE: Target is already blacklisted");
         }
         const blacklistID = generateUID();
-        const add = this.DB.run("INSERT INTO blacklist(blacklistID, hashed)" +
-            " VALUES(?, ?)", blacklistID, AnonModule.getHash(userID));
-        const log = this.DB.run("INSERT INTO logs(userID, modAction, target) VALUES(?, ?, ?)",
-            mod.id, "blacklist", blacklistID);
-        await Promise.all([add, log]);
+        await Blacklist.create({
+            blacklistID: blacklistID,
+            hashed: AnonModule.getHash(userID)
+        });
         return blacklistID;
     }
 
@@ -209,12 +212,10 @@ export class AnonModule extends Module {
         if (!(await this.blacklistIDExists(blacklistID))) {
             throw new Error("SAFE: ID not found")
         }
-        const deletes = this.DB.run("DELETE FROM blacklist WHERE blacklistID = ?",
-            blacklistID);
-        const log = this.DB.run("INSERT INTO logs(userID, modAction, target) VALUES(?, ?, ?)",
-            mod.id, "unblacklist", blacklistID);
-        await Promise.all([deletes, log]);
-        let _ = this.audit.unblacklist(mod, blacklistID);
+        await Blacklist.destroy({
+            where: {blacklistID}
+        });
+        await this.audit.unblacklist(mod, blacklistID);
     }
 
     public newAlias(anonUser: AnonUser): void {
@@ -233,12 +234,12 @@ export class AnonModule extends Module {
         anonUser.setColor(randomColor());
     }
 
-    public async blacklist(messageID: Snowflake, mod: User): Promise<BlacklistResponse> {
+    public async doBlacklist(messageID: Snowflake, mod: User): Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
         if (record instanceof Record) {
-            const blacklistID = await this.blacklistUser(record.userID, mod);
+            const blacklistID = await this.blacklistUser(record.userID);
             this.deleteAnonUserByID(record.userID);
-            let _ = this.audit.blacklist(mod, blacklistID, record);
+            await this.audit.blacklist(mod, blacklistID, record);
             return {
                 blacklistID: blacklistID,
                 anonAlias: record.alias

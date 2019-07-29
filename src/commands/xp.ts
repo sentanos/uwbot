@@ -2,7 +2,6 @@ import {Availability, Command, CommandConfig, Permission} from "../modules/comma
 import {Bot} from "../bot";
 import {GuildMember, Message, MessageEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
-import {formatInterval} from "../util";
 
 class RequiresXP extends Command {
     protected xp: XPModule;
@@ -100,43 +99,6 @@ export class XPLeaderboard extends RequiresXP {
     }
 }
 
-export class XPOptionsGet extends RequiresXP {
-    constructor(bot: Bot) {
-        super(bot, {
-            names: ["xp options get"],
-            usages: {
-                "Gets all current XP options": []
-            },
-            permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
-        });
-    }
-
-    async exec(message: Message) {
-        const config = this.xp.config;
-        return message.channel.send(new MessageEmbed()
-            .setTitle("XP Module Options")
-            .setDescription("Users can receive XP up to a `Block Maximum` in one `Block" +
-                " Interval`. Users also have rolling XP count which only includes the XP" +
-                " received in the most recent `Rolling Interval`. If a user doesn't send a" +
-                " message after `Decay Interval`, they lose `Decay XP` every `Decay Interval`" +
-                " (decay is checked for all users after every `Check Interval`. `Reward Role`" +
-                " will be given to uses who have a higher XP count than `Reward Threshold` and a" +
-                " higher rolling XP count than `Rolling Reward Threshold`.")
-            .addField("Block Interval", formatInterval(config.blockInterval), true)
-            .addField("Block Maximum", config.blockMaximum + " XP", true)
-            .addField("Rolling Interval", formatInterval(config.rollingInterval), true)
-            .addField("Decay Interval", formatInterval(config.decayInterval), true)
-            .addField("Decay XP", config.decayXp + " XP", true)
-            .addField("Check Interval", formatInterval(config.checkInterval), true)
-            .addField("Reward Threshold", config.rewardThreshold + " XP", true)
-            .addField("Rolling Reward Threshold", config.rollingRewardThreshold + " XP", true)
-            .addField("Reward Role", this.bot.guild.roles.get(config.reward).name +
-                " (" + config.reward + ")")
-            .setColor(this.bot.displayColor()));
-    }
-}
-
 export class XPUpdateAll extends RequiresXP {
     constructor(bot: Bot) {
         super(bot, {
@@ -153,7 +115,7 @@ export class XPUpdateAll extends RequiresXP {
     async exec(message: Message) {
         await message.channel.startTyping();
         await this.xp.updateAll();
-        message.channel.stopTyping();
+        message.channel.stopTyping(true);
         return message.channel.send("Full user update complete");
     }
 }

@@ -2,8 +2,8 @@ import {GuildMember, Message} from "discord.js";
 import {Bot} from "../bot";
 import {Module} from "../module";
 import {getNthIndex} from "../util";
-import {CommandsModuleConfig} from "../config";
 import {WhitelistModule} from "./whitelist";
+import {SettingsConfig} from "./settings.skip";
 
 export type ParsedCommand = {
     command: Command,
@@ -42,19 +42,32 @@ export enum Availability {
     All
 }
 
+const settingsConfig: SettingsConfig = {
+    prefix: {
+        description: "The prefix for commands",
+        default: ">"
+    },
+    separator: {
+        description: "The string that separates arguments of commands",
+        default: " "
+    },
+    requiredRole: {
+        description: "The role required for the VerifiedGuildMember permission",
+        optional: true
+    }
+};
+
 export class CommandsModule extends Module {
     public readonly commands: Command[];
-    public readonly config: CommandsModuleConfig;
     private whitelist: WhitelistModule;
 
     constructor(bot: Bot) {
-        super(bot, "commands", ["whitelist"]);
-        this.config = this.bot.config.commands;
+        super(bot, "commands", ["whitelist"], settingsConfig, true);
         this.commands = [];
-        this.bot.client.on("message", this.onMessage.bind(this));
     }
 
     public async initialize() {
+        this.listen("message", this.onMessage.bind(this));
         this.whitelist = this.bot.getModule("whitelist") as WhitelistModule;
         const num: number = await this.loadCommands();
         console.log("Loaded " + num + " commands");
@@ -84,7 +97,7 @@ export class CommandsModule extends Module {
             for (let j = 0; j < command.names.length; j++) {
                 const name = command.names[j];
                 if (content.toLowerCase() === name
-                    || (content.toLowerCase().startsWith(name + this.config.separator))) {
+                    || (content.toLowerCase().startsWith(name + this.settings("separator")))) {
                     if (!found || name.length > res.alias.length) {
                         found = true;
                         res = {command: command, alias: name};
@@ -104,7 +117,11 @@ export class CommandsModule extends Module {
             case Permission.None:
                 return true;
             case Permission.VerifiedGuildMember:
-                return user.roles.has(this.config.requiredRole);
+                if (this.settingsHas("requiredRole")) {
+                    return user.roles.has(this.settings("requiredRole"));
+                } else {
+                    return true;
+                }
             case Permission.UserKick:
                 return user.hasPermission("KICK_MEMBERS");
         }
@@ -134,8 +151,8 @@ export class CommandsModule extends Module {
         if (message.author.bot) {
             return
         }
-        if (message.content.length > this.config.prefix.length + 1 &&
-                message.content.startsWith(this.config.prefix)) {
+        if (message.content.length > this.settings("prefix").length + 1 &&
+                message.content.startsWith(this.settings("prefix"))) {
             const maybe: ParsedCommand | void = this.parseCommand(message.content);
             if (maybe == null) {
                 return
@@ -162,29 +179,29 @@ export class CommandsModule extends Module {
     // For example: ">anon 123    456   7  " will preserve spaces correctly
     public getRawContent(content: string, offsetIndex: number = 0): string {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
-            this.config.prefix.length));
+            this.settings("prefix").length));
         if (maybe == null) {
             throw new Error("Content does not seem to contain a command");
         }
         const command = maybe as CommandAndAlias;
         const afterCommand: string = content.substring(command.alias.length +
-            this.config.prefix.length + this.config.separator.length);
-        const idx = getNthIndex(afterCommand, this.config.separator, offsetIndex);
+            this.settings("prefix").length + this.settings("separator").length);
+        const idx = getNthIndex(afterCommand, this.settings("separator"), offsetIndex);
         if (idx === -1) {
             return afterCommand;
         }
-        return afterCommand.substring(idx + this.config.separator.length);
+        return afterCommand.substring(idx + this.settings("separator").length);
     }
 
     private parseCommand(content: string): ParsedCommand | void {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
-            this.config.prefix.length));
+            this.settings("prefix").length));
         if (maybe == null) {
             return null;
         }
         const command = maybe as CommandAndAlias;
-        const args = content.substring(command.alias.length + this.config.prefix.length)
-            .split(this.config.separator);
+        const args = content.substring(command.alias.length + this.settings("prefix").length)
+            .split(this.settings("separator"));
         args.shift();
         return {
             command: command.command,
@@ -195,15 +212,14 @@ export class CommandsModule extends Module {
 
 }
 
-// Represents a command
-export class Command {
+export abstract class Command {
     public readonly names: string[];
     public readonly usages: CommandUsage;
     public readonly permission: Permission;
     public readonly availability: Availability;
     public readonly bot: Bot;
 
-    constructor(bot: Bot, config: CommandConfig) {
+    protected constructor(bot: Bot, config: CommandConfig) {
         this.bot = bot;
         this.names = config.names;
         this.usages = config.usages;
@@ -235,8 +251,8 @@ export class Command {
                 throw new Error("SAFE: You may only use that command from a guild");
             } else if (this.availability === Availability.WhitelistedGuildChannelsOnly) {
                 await message.author.send("Error: You may only use that command from specific" +
-                    " guild channels. Use \"" + handler.config.prefix + "whitelist get\" to get" +
-                    " a list of these channels.");
+                    " guild channels. Use \"" + handler.settings("prefix") + "whitelist get\" to" +
+                    " get a list of these channels.");
                 return;
             } else {
                 throw new Error("SAFE: Command is unavailable in current context");
@@ -273,10 +289,10 @@ export class Command {
                 first = false;
             }
             const usages = this.usages[description];
-            res += handler.config.prefix + this.names[0];
+            res += handler.settings("prefix") + this.names[0];
             if (usages.length > 0) {
                 usages.forEach((part) => {
-                    res += `${handler.config.separator}\`<${part}>\``;
+                    res += `${handler.settings("separator")}\`<${part}>\``;
                 });
             }
             res += ": " + description;

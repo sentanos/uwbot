@@ -1,6 +1,7 @@
 Modules are files that contain specific bot functions. They may contain a module class (loaded by
  the bot) as well as other classes and functions relevant to the module class.
 - All modules are automatically loaded and constructed with the bot object as the only parameter.
+- Modules are excluded from auto loading if they end with ".skip.ts".
 - An initialize function can be defined to asynchronously load the module.
 - Because files in the modules folder may contain more than just the module class itself, so the 
 module classname must end with "Module".

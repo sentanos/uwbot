@@ -7,6 +7,10 @@ import {Availability, CommandsModule, Permission} from "./modules/commands";
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 
+export const listOrNone = (arr: string[]): string => {
+    return arr.length === 0 ? "_None_" : arr.join("\n");
+};
+
 // Returns a random integer from 0 to max
 export const random = (max: number): number => {
     return Math.floor(Math.random() * max);

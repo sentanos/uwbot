@@ -7,52 +7,94 @@ import {
 } from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
-import {PersistentChannelList, timeDiff} from "../util";
-import {XPModuleConfig} from "../config";
+import {PersistentChannelList, PersistentChannelListConfig, timeDiff} from "../util";
 import {Xp} from "../database/models/xp";
 import {Sequelize, Op} from "sequelize";
 import {XpLogs} from "../database/models/xpLogs";
 import {Availability, Permission} from "./commands";
+import {SettingsConfig} from "./settings.skip";
 
 export type XP = number;
 
+const settingsConfig: SettingsConfig = {
+    blockInterval: {
+        description: "The number of seconds a single XP block lasts",
+        default: "300"
+    },
+    blockMaximum: {
+        description: "The maximum XP that can be earned in a single XP block",
+        default: "1"
+    },
+    rollingInterval: {
+        description: "The number of seconds in a rolling interval, which determines the rolling" +
+            " XP by including XP earned in the past rolling interval",
+        default: "604800"
+    },
+    decayInterval: {
+        description: "The number of seconds where if a user does not send a message their XP" +
+            " decays",
+        default: "86400"
+    },
+    decayXP: {
+        description: "The XP removed if a user's XP decays",
+        default: "6"
+    },
+    checkInterval: {
+        description: "The number of seconds that determines how often decay is checked for all" +
+            " users",
+        default: "60"
+    },
+    rewardThreshold: {
+        description: "The minimum XP required to earn the reward role",
+        default: "168"
+    },
+    rollingRewardThreshold: {
+        description: "The minimum rolling XP required to earn the reward role",
+        default: "5"
+    },
+    reward: {
+        description: "The reward role ID"
+    }
+};
+
+const commandConfig: PersistentChannelListConfig = {
+    listName: "XP Disabled Channels",
+    get: {
+        command: "xp exclude get",
+        usage: "Get channels with XP disabled",
+        permission: Permission.VerifiedGuildMember,
+        availability: Availability.WhitelistedGuildChannelsOnly
+    },
+    add: {
+        command: "xp exclude add",
+        usage: "Disable XP earning in a channel",
+        permission: Permission.UserKick,
+        availability: Availability.WhitelistedGuildChannelsOnly
+    },
+    remove: {
+        command: "xp exclude remove",
+        usage: "Enable XP earning in a channel where earning was previous disabled",
+        permission: Permission.UserKick,
+        availability: Availability.WhitelistedGuildChannelsOnly
+    }
+};
+
 export class XPModule extends Module {
     public readonly exclude: PersistentChannelList;
-    public config: XPModuleConfig;
     private readonly DB: Sequelize;
 
     constructor(bot: Bot) {
-        super(bot, "xp");
+        super(bot, "xp", null, settingsConfig);
         this.DB = this.bot.DB;
         this.exclude = new PersistentChannelList(this.bot, "xpExclude");
-        this.exclude.addCommands({
-            listName: "XP Disabled Channels",
-            get: {
-                command: "xp exclude get",
-                usage: "Get channels with XP disabled",
-                permission: Permission.VerifiedGuildMember,
-                availability: Availability.WhitelistedGuildChannelsOnly
-            },
-            add: {
-                command: "xp exclude add",
-                usage: "Disable XP earning in a channel",
-                permission: Permission.UserKick,
-                availability: Availability.WhitelistedGuildChannelsOnly
-            },
-            remove: {
-                command: "xp exclude remove",
-                usage: "Enable XP earning in a channel where earning was previous disabled",
-                permission: Permission.UserKick,
-                availability: Availability.WhitelistedGuildChannelsOnly
-            }
-        });
-        this.config = this.bot.config.xp;
-        this.bot.client.on("message", this.onMessage.bind(this));
-        setInterval(this.checkDecay.bind(this), this.config.decayInterval * 1000);
+        this.exclude.addCommands(commandConfig);
     }
 
     public async initialize() {
         await this.exclude.initialize();
+        this.listen("message", this.onMessage.bind(this));
+        this.interval(this.checkDecay.bind(this),
+            this.settingsN("decayInterval") * 1000);
     }
 
     public static levelFromXp(xp: XP): number {
@@ -73,20 +115,21 @@ export class XPModule extends Module {
     private async checkReward(user: Snowflake): Promise<boolean> {
         const xp: XP = await this.getXP(user);
         const rolling: XP = await this.getRollingXP(user);
-        return xp >= this.config.rewardThreshold && rolling >= this.config.rollingRewardThreshold;
+        return xp >= this.settingsN("rewardThreshold") && rolling >
+            this.settingsN("rollingRewardThreshold");
     }
 
     private async addReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.config.reward) == null) {
-            await member.roles.add(this.config.reward);
+        if (member.roles.get(this.settings("reward")) == null) {
+            await member.roles.add(this.settings("reward"));
             return true;
         }
         return false;
     }
 
     private async removeReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.config.reward) != null) {
-            await member.roles.remove(this.config.reward);
+        if (member.roles.get(this.settings("reward")) != null) {
+            await member.roles.remove(this.settings("reward"));
             return true;
         }
         return false;
@@ -121,7 +164,7 @@ export class XPModule extends Module {
     }
 
     public async updateAll(): Promise<void> {
-        const rewarded = await this.bot.guild.roles.get(this.config.reward).members.array();
+        const rewarded = await this.bot.guild.roles.get(this.settings("reward")).members.array();
         let jobs = [];
         for (let i = 0; i < rewarded.length; i++) {
             jobs.push((async () => {
@@ -133,7 +176,7 @@ export class XPModule extends Module {
         const maybeReward = await Xp.findAll({
             where: {
                 totalXp: {
-                    [Op.gte]: this.config.rewardThreshold
+                    [Op.gte]: this.settingsN("rewardThreshold")
                 }
             }
         });
@@ -145,7 +188,7 @@ export class XPModule extends Module {
 
     public async top(num: number, offset: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
         return await Xp.findAll({
-            order: ["totalXp", "DESC"],
+            order: [["totalXp", "DESC"]],
             limit: num,
             offset: offset
         });
@@ -161,7 +204,7 @@ export class XPModule extends Module {
     }
 
     public async getRollingXP(user: Snowflake): Promise<XP> {
-        const after: Date = new Date(new Date().getTime() - this.config.rollingInterval * 1000);
+        const after: Date = new Date(new Date().getTime() - this.settingsN("rollingInterval") * 1000);
         const res: number = await XpLogs.sum("xp", {
             where: {
                 [Op.and]: {
@@ -194,8 +237,8 @@ export class XPModule extends Module {
                     }, {transaction: t});
                 } else {
                     const newBlock: boolean = timeDiff(new Date(), userXp.lastBlock) >
-                        this.config.blockInterval * 1000;
-                    const unfinishedBlock: boolean = userXp.blockXp < this.config.blockMaximum;
+                        this.settingsN("blockInterval") * 1000;
+                    const unfinishedBlock: boolean = userXp.blockXp < this.settingsN("blockMaximum");
                     if (newBlock || unfinishedBlock) {
                         userXp.totalXp += add;
                         userXp.blockXp += add;
@@ -224,7 +267,7 @@ export class XPModule extends Module {
     private async checkDecay(): Promise<void> {
         let rewardCheckUsers = [];
         let rewardChecks = [];
-        const interval = this.config.decayInterval / 86400;
+        const interval = this.settingsN("decayInterval") / 86400;
         const userXps: Xp[] = await Xp.findAll({
             where: Sequelize.and(
                 Sequelize.where(Sequelize.literal("julianday(datetime('now')) -" +
@@ -238,8 +281,8 @@ export class XPModule extends Module {
             const userXp: Xp = userXps[i];
             const xp: XP = userXp.totalXp;
             if (xp > 0) {
-                const newXp: XP = Math.max(0, xp - this.config.decayXp);
-                const decay: XP = Math.max(xp * -1, this.config.decayXp * -1);
+                const newXp: XP = Math.max(0, xp - this.settingsN("decayXp"));
+                const decay: XP = Math.max(xp * -1, this.settingsN("decayXp") * -1);
                 jobs.push(userXp.update({
                     totalXp: newXp,
                     lastDecay: new Date()

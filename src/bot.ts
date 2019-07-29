@@ -1,15 +1,14 @@
-import {
-    Client, ColorResolvable,
-    Guild, GuildMember, Message, TextChannel, User
-} from "discord.js";
+import {Client, ColorResolvable, Guild, GuildMember, Message, TextChannel, User} from "discord.js";
 import {readdir} from "fs";
 import {join} from "path";
 import {promisify} from "util";
-import {Module} from "./module";
+import {Module, ModuleState} from "./module";
 import {BotConfig} from "./config";
 import {CommandsModule} from "./modules/commands";
 import {Sequelize} from "sequelize";
 import initializeDB from "./database";
+import {SettingsModule} from "./modules/settings.skip";
+import {Setting} from "./database/models/setting";
 
 type Modules = {
     [name: string]: Module;
@@ -21,8 +20,10 @@ export class Bot {
     public readonly guild: Guild;
     public readonly config: BotConfig;
     public readonly filter: string[];
-    private readonly modules: Modules;
+    public readonly modules: Modules;
     private readonly loaded: Set<string>;
+    private readonly enabled: Set<string>;
+    private settings: SettingsModule;
 
     constructor(client: Client, sequelize: Sequelize, config: BotConfig, filter: string[]) {
         this.client = client;
@@ -32,13 +33,18 @@ export class Bot {
         this.guild = client.guilds.get(config.guild);
         this.modules = {};
         this.loaded = new Set<string>();
+        this.enabled = new Set<string>();
     }
 
     public async initialize(): Promise<void> {
         initializeDB(this.DB);
         await this.DB.sync();
+        const settingsMod: SettingsModule = new SettingsModule(this);
+        this.addModule(settingsMod);
+        await this.load(settingsMod);
+        this.settings = settingsMod;
         const num = await this.loadModules();
-        console.log("Loaded " + num + " modules");
+        console.log("Found " + num + " modules");
     }
 
     public displayColor(): ColorResolvable {
@@ -99,15 +105,100 @@ export class Bot {
     // No circular dependencies!
     private async load(module: Module): Promise<void> {
         if (this.loaded.has(module.name)) {
+            // Already loaded
             return;
         }
+        if (module.settingsConfig != null) {
+            await this.settings.config(module.settingsConfig, module.name);
+        }
         for (let i = 0; i < module.dependencies.length; i++) {
-            if (!this.loaded.has(module.dependencies[i])) {
-                await this.load(this.modules[module.dependencies[i]]);
+            const dependency = module.dependencies[i];
+            if (!this.loaded.has(dependency)) {
+                await this.load(this.modules[dependency]);
+            }
+            this.modules[dependency].dependents.push(module.name);
+        }
+        if (await this.shouldBeEnabled(module)) {
+            await this.enable(module);
+        }
+        this.loaded.add(module.name);
+    }
+
+    private async shouldBeEnabled(module: Module): Promise<boolean> {
+        if (module.state === ModuleState.Required) {
+            return true;
+        }
+        const setting: Setting | void = await this.settings.persistentGet(
+            `internal.modules.${module.name}.enabled`);
+        if (setting instanceof Setting) {
+            return setting.value === "true";
+        } else {
+            return false;
+        }
+    }
+
+    public async setEnabled(moduleName: string, enabled: boolean): Promise<void> {
+        await this.settings.persistentSet(`internal.modules.${moduleName}.enabled`,
+            enabled ? "true": "false");
+    }
+
+    private async checkSettings(module: Module): Promise<void> {
+        if (module.settingsConfig != null) {
+            if (!(await this.settings.config(module.settingsConfig, module.name))) {
+                throw new Error("SAFE: Not all settings have been set up for this module")
+            }
+            module.settings = this.settings.withNamespace(module.name);
+            module.settingsHas = this.settings.withNamespaceHas(module.name);
+        }
+    }
+
+    public async enable(module: Module): Promise<boolean> {
+        if (module.state === ModuleState.Enabled) {
+            throw new Error("SAFE: Module is already enabled");
+        }
+        for (let i = 0; i < module.dependencies.length; i++) {
+            const name: string = module.dependencies[i];
+            if (!this.enabled.has(name)) {
+                throw new Error(`SAFE: Dependency "${name}" is not enabled`);
             }
         }
+        await this.checkSettings(module);
         await module.initialize();
-        this.loaded.add(module.name);
+        this.enabled.add(module.name);
+        if (module.state !== ModuleState.Required) {
+            module.state = ModuleState.Enabled;
+        }
+        return true;
+    }
+
+    public async disable(module: Module): Promise<void> {
+        if (module.state === ModuleState.Required) {
+            throw new Error("SAFE: Cannot disable required module");
+        }
+        if (module.state === ModuleState.Disabled) {
+            throw new Error("SAFE: Module is already disabled");
+        }
+        for (let i = 0; i < module.dependents.length; i++) {
+            const dependent: string = module.dependents[i];
+            if (this.enabled.has(dependent)) {
+                throw new Error("SAFE: Module \"" + dependent + "\" depends on this module and" +
+                    " is still enabled. Please disable all dependents first.");
+            }
+        }
+        await module.unload();
+        this.enabled.delete(module.name);
+        module.state = ModuleState.Disabled;
+    }
+
+    public async reload(module: Module): Promise<void> {
+        await module.unload();
+        await module.initialize();
+        for (let i = 0; i < module.dependents.length; i++) {
+            const dependent: string = module.dependents[i];
+            if (this.enabled.has(dependent)) {
+                await this.reload(this.modules[dependent]);
+            }
+        }
     }
 
     public async loadModules(): Promise<number> {
@@ -119,15 +210,25 @@ export class Bot {
                 return true;
             }
             return false;
-        });
+        }, (filename: string) => {
+                return filename.endsWith(".js") && !filename.endsWith(".skip.js");
+            });
         for (const module in this.modules) {
-            await this.load(this.modules[module]);
+            try {
+                await this.load(this.modules[module]);
+            } catch (err) {
+                console.error(`Error loading module ${module}: ${err.stack}`);
+            }
         }
         return num;
     }
 
     public getModule(name: string): Module {
-        return this.modules[name];
+        const module: Module = this.modules[name];
+        if (module.state === ModuleState.Disabled) {
+            throw new Error("SAFE: Module is disabled");
+        }
+        return module;
     }
 
     public async forEachClassInFile(location: string, func: (name: string, aClass: any) =>

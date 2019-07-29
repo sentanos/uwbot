@@ -14,6 +14,7 @@ import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
 import {AuditModule} from "./audit";
 import {Blacklist} from "../database/models/blacklist";
+import {SettingsConfig} from "./settings.skip";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -102,28 +103,42 @@ export class Record {
     }
 }
 
+const settingsConfig: SettingsConfig = {
+    maxID: {
+        description: "The maximum anon ID (the minimum is always 0)",
+        default: "1000"
+    },
+    lifetime: {
+        description: "The minimum number of seconds after which blacklisting is guaranteed to be" +
+            " possible",
+        default: "43200"
+    },
+    maxInactiveRecords: {
+        description: "The maximum number of inactive message records that are kept",
+        default: "1000"
+    }
+};
+
 export class AnonModule extends Module {
     private users: Map<Snowflake, AnonUser>;
     public readonly guild: Guild;
     private readonly filter: string[];
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
-    private readonly maxID: number;
     private audit: AuditModule;
 
     // TODO: LOG IN AUDIT!
 
     constructor(bot: Bot) {
-        super(bot, "anon", ["audit"]);
+        super(bot, "anon", ["audit"], settingsConfig);
         this.guild = this.bot.guild;
-        this.maxID = this.bot.config.anon.maxID;
         this.filter = this.bot.filter;
-        this.users = new Map<Snowflake, AnonUser>();
-        this.messageRecords = new MessageRecords(this.bot.config.anon.maxInactiveRecords,
-            this.bot.config.anon.lifetime);
     }
 
     public async initialize() {
+        this.users = new Map<Snowflake, AnonUser>();
+        this.messageRecords = new MessageRecords(this.settingsN("maxInactiveRecords"),
+            this.settingsN("lifetime"));
         this.audit = this.bot.getModule("audit") as AuditModule;
         await this.bot.getChannelByName("anonymous").send("I was restarted due to updates so IDs" +
             " have been reset");
@@ -144,13 +159,13 @@ export class AnonModule extends Module {
 
     private randomFreeAlias(): AnonAlias {
         let alias: AnonAlias;
-        if (this.users.size >= this.maxID) {
+        if (this.users.size >= this.settingsN("maxID")) {
             alias = this.users.size + 1;
             console.log("WARNING: IDs should be reset");
         } else {
-            alias = random(this.maxID);
+            alias = random(this.settingsN("maxID"));
             while (this.aliasTaken(alias)) {
-                alias = (alias + 1) % this.maxID
+                alias = (alias + 1) % this.settingsN("maxID")
             }
         }
         return alias;
@@ -224,7 +239,7 @@ export class AnonModule extends Module {
     }
 
     public setAlias(anonUser: AnonUser, alias: AnonAlias): void {
-        if (alias > this.maxID || alias < 0) {
+        if (alias > this.settingsN("maxID") || alias < 0) {
             throw new Error("SAFE: ID out of bounds");
         }
         if (this.aliasTaken(alias)) {

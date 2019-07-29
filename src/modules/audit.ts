@@ -2,18 +2,23 @@ import {Module} from "../module";
 import {Bot} from "../bot";
 import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
+import {SettingsConfig} from "./settings.skip";
+
+const settingsConfig: SettingsConfig = {
+    channel: {
+        description: "The channel audit logs are output to"
+    }
+};
 
 export class AuditModule extends Module {
-    public readonly channel: TextChannel;
-
     constructor(bot: Bot) {
-        super(bot, "audit");
-        this.channel = this.bot.guild.channels.get(this.bot.config.audit.channel) as TextChannel;
+        super(bot, "audit", null, settingsConfig);
     }
 
     public async log(title: string, author: User | void, description: string,
         targetMessage: string, url: string, ...fields: {name: string, value: string}[]) :
         Promise<void> {
+        const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
         const embed = new MessageEmbed();
         embed.setTitle(title);
         if (targetMessage !== "") {
@@ -30,7 +35,7 @@ export class AuditModule extends Module {
             embed.setAuthor(author.tag, author.avatarURL());
         }
         embed.setColor(this.bot.displayColor());
-        await this.channel.send(embed);
+        await channel.send(embed);
     }
 
     public async pinLog(user: User, message: Message, type: "pin" | "unpin"): Promise<void> {

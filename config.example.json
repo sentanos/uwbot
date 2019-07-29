@@ -2,32 +2,5 @@
   "guild": "enter_guild_id_here",
   "client": {
     "partials": ["MESSAGE"]
-  },
-  "commands": {
-    "prefix": ">",
-    "separator": " ",
-    "requiredRole": "enter_role_id_here"
-  },
-  "anon": {
-    "maxID": 1000,
-    "maxInactiveRecords": 1000,
-    "lifetime": 43200
-  },
-  "pin": {
-    "emoji": "\uD83D\uDCCC"
-  },
-  "xp": {
-    "blockInterval": 300,
-    "blockMaximum": 1,
-    "rollingInterval": 604800,
-    "checkInterval": 60,
-    "decayInterval": 86400,
-    "decayXp": 6,
-    "rewardThreshold": 168,
-    "rollingRewardThreshold": 5,
-    "reward": "enter_role_id_here"
-  },
-  "audit": {
-    "channel": "enter_channel_id_here"
   }
 }

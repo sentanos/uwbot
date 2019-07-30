@@ -8,7 +8,7 @@ export class Blacklist extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initBlacklist(sequelize: Sequelize): typeof Blacklist {
+export function initBlacklist(sequelize: Sequelize): void {
     Blacklist.init({
         blacklistID: {
             type: DataTypes.STRING,
@@ -19,7 +19,10 @@ export function initBlacklist(sequelize: Sequelize): typeof Blacklist {
             unique: true,
             allowNull: false
         }
-    }, {sequelize: sequelize, modelName: "blacklist"});
-    return Blacklist;
+    }, {
+        sequelize: sequelize,
+        modelName: "blacklist",
+        tableName: "blacklist"
+    });
 };
 

@@ -23,6 +23,10 @@ export function initSettings(sequelize: Sequelize): void {
             type: DataTypes.STRING,
             allowNull: false
         }
-    }, {sequelize: sequelize, modelName: "settings"});
+    }, {
+        sequelize: sequelize,
+        modelName: "settings",
+        tableName: "settings"
+    });
 }
 

@@ -9,7 +9,7 @@ export class Pins extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initPins(sequelize: Sequelize): typeof Pins {
+export function initPins(sequelize: Sequelize): void {
     Pins.init({
         messageID: {
             type: DataTypes.STRING,
@@ -22,6 +22,9 @@ export function initPins(sequelize: Sequelize): typeof Pins {
         systemMessageID: {
             type: DataTypes.STRING
         }
-    }, {sequelize: sequelize, modelName: "pins"});
-    return Pins;
+    }, {
+        sequelize: sequelize,
+        modelName: "pins",
+        tableName: "pins"
+    });
 };

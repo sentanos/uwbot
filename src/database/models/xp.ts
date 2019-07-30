@@ -12,7 +12,7 @@ export class Xp extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initXp(sequelize: Sequelize): typeof Xp {
+export function initXp(sequelize: Sequelize): void {
     Xp.init({
         userID: {
             type: DataTypes.STRING,
@@ -40,6 +40,9 @@ export function initXp(sequelize: Sequelize): typeof Xp {
             defaultValue: DataTypes.NOW,
             allowNull: false
         }
-    }, {sequelize: sequelize, modelName: "xp"});
-    return Xp;
+    }, {
+        sequelize: sequelize,
+        modelName: "xp",
+        tableName: "xp"
+    });
 };

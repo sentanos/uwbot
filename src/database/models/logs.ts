@@ -2,26 +2,33 @@ import {Sequelize, Model, DataTypes} from "sequelize";
 
 export class Logs extends Model {
     public userID!: string;
-    public modAction!: string;
+    public action!: string;
     public target: string | null;
+    public detail: string | null;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
 }
 
-export function initLogs(sequelize: Sequelize): typeof Logs {
+export function initLogs(sequelize: Sequelize): void {
     Logs.init({
         userID: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        modAction: {
-            type: DataTypes.TEXT,
+        action: {
+            type: DataTypes.STRING,
             allowNull: false
         },
         target: {
             type: DataTypes.STRING
+        },
+        detail: {
+            type: DataTypes.TEXT,
         }
-    }, {sequelize: sequelize, modelName: "logs"});
-    return Logs;
+    }, {
+        sequelize: sequelize,
+        modelName: "logs",
+        tableName: "logs"
+    });
 };

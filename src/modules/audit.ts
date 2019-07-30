@@ -50,7 +50,7 @@ export class AuditModule extends Module {
     }
 
     private idenUser(user: User): string {
-        return `${user.tag} \`(ID: ${user.id})`;
+        return `${user.tag} \`(ID: ${user.id})\``;
     }
 
     private idenMessage(message: Message): string {

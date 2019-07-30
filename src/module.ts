@@ -77,6 +77,8 @@ export abstract class Module {
         await this.initialize();
     }
 
+    public async event(name: string, payload: string): Promise<void> {}
+
     public settingsN(key: string): number {
         return parseInt(this.settings(key), 10);
     }

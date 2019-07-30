@@ -11,6 +11,7 @@
   "author": "Froast",
   "license": "ISC",
   "dependencies": {
+    "cron": "^1.7.1",
     "discord.js": "github:discordjs/discord.js",
     "sequelize": "^5.10.1",
     "sqlite3": "^4.0.9",

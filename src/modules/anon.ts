@@ -15,6 +15,7 @@ import {CommandsModule} from "./commands";
 import {AuditModule} from "./audit";
 import {Blacklist} from "../database/models/blacklist";
 import {SettingsConfig} from "./settings.skip";
+import {Logs} from "../database/models/logs";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -178,14 +179,18 @@ export class AnonModule extends Module {
         this.users.set(user.id, new AnonUser(this, user, this.randomFreeAlias()));
     }
 
-    // public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
-    //     const res = await this.DB.get("SELECT userID FROM logs WHERE modAction = 'blacklist' AND" +
-    //         " target = ? ORDER BY actionTime DESC LIMIT 1", blacklistID);
-    //     if (res == null) {
-    //         return null;
-    //     }
-    //     return res.userID;
-    // }
+    public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
+        const res = await Logs.findOne({
+            where: {
+                action: "BLACKLIST",
+                target: blacklistID
+            }
+        });
+        if (res == null) {
+            return null;
+        }
+        return res.userID;
+    }
 
     public async isBlacklisted(userID: Snowflake): Promise<boolean> {
         const res: Blacklist | null = await Blacklist.findOne({

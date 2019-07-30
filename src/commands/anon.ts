@@ -162,32 +162,32 @@ export class Unblacklist extends RequiresAnon {
     }
 }
 
-// export class BlacklistedBy extends RequiresAnon {
-//     constructor(bot) {
-//         super(bot, {
-//             names: ["blacklistedby", "blacklister", "whoblacklisted"],
-//             usages: {
-//                 "Show who blacklisted a certain user": ["blacklistId"]
-//             },
-//             permission: Permission.UserKick,
-//             availability: Availability.GuildOnly
-//         })
-//     }
-//
-//     async exec(message: Message, blacklistID: string) {
-//         const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
-//         if (typeof id === "string") {
-//             const member = await this.anon.guild.members.fetch(id);
-//             if (member == null) {
-//                 return message.reply(id);
-//             } else {
-//                 return message.reply(member.user.tag);
-//             }
-//         } else {
-//             throw new Error("SAFE: ID not found");
-//         }
-//     }
-// }
+export class BlacklistedBy extends RequiresAnon {
+    constructor(bot) {
+        super(bot, {
+            names: ["blacklistedby", "blacklister", "whoblacklisted"],
+            usages: {
+                "Show who blacklisted a certain user": ["blacklistId"]
+            },
+            permission: Permission.UserKick,
+            availability: Availability.GuildOnly
+        })
+    }
+
+    async exec(message: Message, blacklistID: string) {
+        const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
+        if (typeof id === "string") {
+            const member = await this.anon.guild.members.fetch(id);
+            if (member == null) {
+                return message.reply(id);
+            } else {
+                return message.reply(member.user.tag);
+            }
+        } else {
+            throw new Error("SAFE: ID not found");
+        }
+    }
+}
 
 export class Reset extends RequiresAnon {
     constructor(bot) {

@@ -3,6 +3,7 @@ import {Bot} from "../bot";
 import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
 import {SettingsConfig} from "./settings.skip";
+import {Logs} from "../database/models/logs";
 
 const settingsConfig: SettingsConfig = {
     channel: {
@@ -15,55 +16,72 @@ export class AuditModule extends Module {
         super(bot, "audit", null, settingsConfig);
     }
 
-    public async log(title: string, author: User | void, description: string,
-        targetMessage: string, url: string, ...fields: {name: string, value: string}[]) :
+    public async log(action: string, title: string, author: User, description: string,
+        message?: Message, target?: string, ...fields: {name: string, value: string}[]) :
         Promise<void> {
         const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
         const embed = new MessageEmbed();
         embed.setTitle(title);
-        if (targetMessage !== "") {
-            description += "\n```\n" + targetMessage + "\n```";
+        if (message != null) {
+            let content;
+            if (message.embeds.length > 0) {
+                content = message.embeds[0].description;
+            } else {
+                content = message.content;
+            }
+            description += "\n```\n" + content + "\n```";
         }
-        if (url !== "") {
-            description += "\n[Jump to message](" + url + ")";
+        if (message != null) {
+            description += "\n[Jump to message](" + message.url + ")";
         }
         embed.setDescription(description);
         for (let i = 0; i < fields.length; i++) {
             embed.addField(fields[i].name, fields[i].value);
         }
-        if (author instanceof User) {
-            embed.setAuthor(author.tag, author.avatarURL());
-        }
+        embed.setAuthor(author.tag, author.avatarURL());
         embed.setColor(this.bot.displayColor());
-        await channel.send(embed);
+        const log = Logs.create({
+            userID: author.id,
+            action: action,
+            target: target != null ? target : (message != null ? message.id : null),
+            detail: description
+        });
+        await Promise.all([channel.send(embed), log]);
+    }
+
+    private idenUser(user: User): string {
+        return `${user.tag} \`(ID: ${user.id})`;
+    }
+
+    private idenMessage(message: Message): string {
+        return `\`(ID: ${message.id})\``;
     }
 
     public async pinLog(user: User, message: Message, type: "pin" | "unpin"): Promise<void> {
-        return this.log("Message " + (type === "pin" ? "Pinned" : "Unpinned"), user,
-            `User ${user.tag} \`(ID: ${user.id})\` ${type}ned the following message \
-            \`(ID: ${message.id})\`:`, message.content, message.url);
+        return this.log("PIN_MESSAGE", "Message " + (type === "pin" ? "Pinned" : "Unpinned"),
+            user, `User ${this.idenUser(user)} ${type}ned the following message \
+            ${this.idenMessage(message)}:`, message);
     }
 
     public async pinChangeLog(user: User, other: User, message: Message): Promise<void> {
-        return this.log("Message Pin Change", user,
-            `User ${user.tag} \`(ID: ${user.id})\` removed their pin reaction from the \
-            message \`(ID: ${message.id})\` below, which makes user ${other.tag} \
-            \`(ID: ${other.id})\` the new owner of the pin.`, message.content, message.url);
+        return this.log("PIN_OWNER_CHANGE", "Message Pin Change", user,
+            `User ${this.idenUser(user)} removed their pin reaction from the \
+            message ${this.idenMessage(message)} below, which makes user ${this.idenUser(other)} \
+            the new owner of the pin.`, message);
     }
 
     public async blacklist(user: User, blacklistID: string, record: Record) {
         const alias: AnonAlias = record.alias;
         const message: Message = (this.bot.guild.channels.get(record.channelID) as TextChannel)
             .messages.get(record.messageID);
-        return this.log("Anon User Blacklisted", user, `User ${user.tag} \
-            \`(ID: ${user.id})\` blacklisted anon **${alias}** \`(blacklist ID: ${blacklistID})\` \
-            because of the following message \`(ID: ${message.id})\`:`,
-            message.embeds[0].description, message.url)
+        return this.log("BLACKLIST", "Anon User Blacklisted", user, `User \
+            ${this.idenUser(user)} blacklisted anon **${alias}** \`(blacklist ID: ${blacklistID}) \
+            because of the following message ${this.idenMessage(message)}:`, message, blacklistID)
     }
 
     public async unblacklist(user: User, blacklistID: string) {
-        return this.log("Anon User Unblacklisted", user, `User ${user.tag} \
-            \`(ID: ${user.id})\` unblacklisted the anon user with blacklist ID \`${blacklistID}\`.`,
-            "", "");
+        return this.log("UNBLACKLIST", "Anon User Unblacklisted", user, `User \
+            ${this.idenUser(user)} unblacklisted the anon user with blacklist ID \`${blacklistID}\`.`,
+            null, blacklistID);
     }
 }

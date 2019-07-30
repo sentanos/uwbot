@@ -112,7 +112,11 @@ export class Bot {
             await this.settings.config(module.settingsConfig, module.name);
         }
         for (let i = 0; i < module.dependencies.length; i++) {
-            const dependency = module.dependencies[i];
+            let dependency = module.dependencies[i];
+            let optional = dependency.startsWith("?");
+            if (optional) {
+                dependency = dependency.substring(1);
+            }
             if (!this.loaded.has(dependency)) {
                 await this.load(this.modules[dependency]);
             }
@@ -142,6 +146,10 @@ export class Bot {
             enabled ? "true": "false");
     }
 
+    public isEnabled(moduleName: string): boolean {
+        return this.enabled.has(moduleName);
+    }
+
     private async checkSettings(module: Module): Promise<void> {
         if (module.settingsConfig != null) {
             if (!(await this.settings.config(module.settingsConfig, module.name))) {
@@ -158,7 +166,7 @@ export class Bot {
         }
         for (let i = 0; i < module.dependencies.length; i++) {
             const name: string = module.dependencies[i];
-            if (!this.enabled.has(name)) {
+            if (!name.startsWith("?") && !this.enabled.has(name)) {
                 throw new Error(`SAFE: Dependency "${name}" is not enabled`);
             }
         }
@@ -178,16 +186,29 @@ export class Bot {
         if (module.state === ModuleState.Disabled) {
             throw new Error("SAFE: Module is already disabled");
         }
+        let reloads: Module[] = [];
         for (let i = 0; i < module.dependents.length; i++) {
-            const dependent: string = module.dependents[i];
-            if (this.enabled.has(dependent)) {
-                throw new Error("SAFE: Module \"" + dependent + "\" depends on this module and" +
-                    " is still enabled. Please disable all dependents first.");
+            const dependent = this.modules[module.dependents[i]];
+            let optional = false;
+            for (let i = 0; i < dependent.dependencies.length; i++) {
+                if (dependent.dependencies[i] === "?" + module.name) {
+                    optional = true;
+                    break;
+                }
+            }
+            if (optional) {
+                reloads.push(dependent);
+            } else if (this.enabled.has(dependent.name)) {
+                throw new Error("SAFE: Module \"" + dependent.name + "\" depends on this module" +
+                    " and is still enabled. Please disable all dependents first.");
             }
         }
         await module.unload();
         this.enabled.delete(module.name);
         module.state = ModuleState.Disabled;
+        for (let i = 0; i < reloads.length; i++) {
+            await reloads[i].reload();
+        }
     }
 
     public async reload(module: Module): Promise<void> {

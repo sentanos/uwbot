@@ -31,14 +31,14 @@ export type CommandConfig = {
 
 export enum Permission {
     UserKick,
-    VerifiedGuildMember,
+    VerifiedGuildMember, // ONLY IF SPECIFIED IN COMMANDS MODULE SETTINGS, OTHERWISE NONE
     None
 }
 
 export enum Availability {
     ChatOnly,
     GuildOnly,
-    WhitelistedGuildChannelsOnly,
+    WhitelistedGuildChannelsOnly, // ONLY IF WHITELIST MODULE IS ENABLED, OTHERWISE GUILDONLY
     All
 }
 
@@ -60,15 +60,19 @@ const settingsConfig: SettingsConfig = {
 export class CommandsModule extends Module {
     public readonly commands: Command[];
     private whitelist: WhitelistModule;
+    private whitelistEnabled: boolean;
 
     constructor(bot: Bot) {
-        super(bot, "commands", ["whitelist"], settingsConfig, true);
+        super(bot, "commands", ["?whitelist"], settingsConfig, true);
         this.commands = [];
     }
 
     public async initialize() {
         this.listen("message", this.onMessage.bind(this));
-        this.whitelist = this.bot.getModule("whitelist") as WhitelistModule;
+        this.whitelistEnabled = this.bot.isEnabled("whitelist");
+        if (this.whitelistEnabled) {
+            this.whitelist = this.bot.getModule("whitelist") as WhitelistModule;
+        }
         const num: number = await this.loadCommands();
         console.log("Loaded " + num + " commands");
     }
@@ -136,10 +140,8 @@ export class CommandsModule extends Module {
             case Availability.GuildOnly:
                 return message.guild != null;
             case Availability.WhitelistedGuildChannelsOnly:
-                if (message.guild == null) {
-                    return false;
-                }
-                return this.whitelist.channels.has(message.channel.id);
+                return message.guild != null && (!this.whitelistEnabled ||
+                    this.whitelist.channels.has(message.channel.id));
             case Availability.All:
                 return true;
             default:

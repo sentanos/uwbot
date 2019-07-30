@@ -5,6 +5,7 @@ import {Availability, Permission} from "./commands";
 
 const commandConfig: PersistentChannelListConfig = {
     listName: "Whitelist",
+    parentModule: "whitelist",
     get: {
         command: "whitelist get",
         usage: "Gets whitelisted channels for certain bot commands",
@@ -29,7 +30,7 @@ export class WhitelistModule extends Module {
     public readonly channels: PersistentChannelList;
 
     constructor(bot: Bot) {
-        super(bot, "whitelist", null, null, true);
+        super(bot, "whitelist");
         this.channels = new PersistentChannelList(this.bot, "whitelist");
         this.channels.addCommands(commandConfig);
     }

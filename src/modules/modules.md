@@ -12,3 +12,7 @@ completely certain that the other module has been loaded.
 - Modules interact kind of weirdly with the type system. Special care must be given to making 
 sure that retrieved modules are retrieved with the correct name and that they are being loaded 
 because issues will not be evident until runtime.
+- Modules can have multiple non-circular dependencies. The module loader will ensure that these 
+dependencies are loaded AND enabled before the module is. A module can have an optional 
+dependency by appending a question mark "?", but it is the modules responsibility to check if the
+dependency is enabled or not

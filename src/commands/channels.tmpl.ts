@@ -6,9 +6,10 @@ import {Message, MessageEmbed, Snowflake} from "discord.js";
 class ChannelCommand extends Command {
     public readonly channels: PersistentChannelList;
     public readonly listName: string;
+    private readonly parentModule: string;
 
-    constructor(bot: Bot, channels: PersistentChannelList, config: PersistentChannelListConfigPart,
-                listName: string, args: string[]) {
+    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+                config: PersistentChannelListConfigPart, listName: string, args: string[]) {
         super(bot, {
             names: [config.command],
             usages: {
@@ -20,13 +21,19 @@ class ChannelCommand extends Command {
 
         this.channels = channels;
         this.listName = listName;
+        this.parentModule = parentModule;
+    }
+
+    async run(message?: Message, ...args: string[]): Promise<any> {
+        this.bot.getModule(this.parentModule);
+        return super.run(message, ...args);
     }
 }
 
 export class ChannelGetCommand extends ChannelCommand {
-    constructor(bot: Bot, channels: PersistentChannelList, config: PersistentChannelListConfigPart,
-                listName: string) {
-        super(bot, channels, config, listName, []);
+    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+                config: PersistentChannelListConfigPart, listName: string) {
+        super(bot, parentModule, channels, config, listName, []);
     }
 
     async exec(message: Message) {
@@ -48,9 +55,9 @@ export class ChannelGetCommand extends ChannelCommand {
 }
 
 export class ChannelAddCommand extends ChannelCommand {
-    constructor(bot: Bot, channels: PersistentChannelList, config: PersistentChannelListConfigPart,
-                listName: string) {
-        super(bot, channels, config, listName, ["channelID"]);
+    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+                config: PersistentChannelListConfigPart, listName: string) {
+        super(bot, parentModule, channels, config, listName, ["channelID"]);
     }
 
     async exec(message: Message, channel: string) {
@@ -65,9 +72,9 @@ export class ChannelAddCommand extends ChannelCommand {
 }
 
 export class ChannelRemoveCommand extends ChannelCommand {
-    constructor(bot: Bot, channels: PersistentChannelList, config: PersistentChannelListConfigPart,
-                listName: string) {
-        super(bot, channels, config, listName, ["channelID"]);
+    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+                config: PersistentChannelListConfigPart, listName: string) {
+        super(bot, parentModule, channels, config, listName, ["channelID"]);
     }
 
     async exec(message: Message, channel: string) {

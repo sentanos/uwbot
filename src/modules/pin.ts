@@ -15,6 +15,7 @@ const settingsConfig: SettingsConfig = {
 
 const commandConfig: PersistentChannelListConfig = {
     listName: "Pin Disabled Channels",
+    parentModule: "pin",
     get: {
         command: "pin exclude get",
         usage: "Get channels with pinning disabled",

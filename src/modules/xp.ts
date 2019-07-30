@@ -59,6 +59,7 @@ const settingsConfig: SettingsConfig = {
 
 const commandConfig: PersistentChannelListConfig = {
     listName: "XP Disabled Channels",
+    parentModule: "xp",
     get: {
         command: "xp exclude get",
         usage: "Get channels with XP disabled",

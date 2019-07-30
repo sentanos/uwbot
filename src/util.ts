@@ -139,6 +139,7 @@ export type PersistentChannelListConfigPart = {
 
 export type PersistentChannelListConfig = {
     listName: string,
+    parentModule: string,
     get: PersistentChannelListConfigPart,
     add: PersistentChannelListConfigPart,
     remove: PersistentChannelListConfigPart
@@ -174,11 +175,12 @@ export class PersistentChannelList {
 
     public addCommands(config: PersistentChannelListConfig): void {
         const commandsMod = this.bot.getModule("commands") as CommandsModule;
-        commandsMod.addCommand(new ChannelGetCommand(this.bot, this, config.get, config.listName));
-        commandsMod.addCommand(new ChannelAddCommand(this.bot, this, config.add,
-            config.listName.toLowerCase()));
-        commandsMod.addCommand(new ChannelRemoveCommand(this.bot, this, config.remove,
-            config.listName.toLowerCase()));
+        commandsMod.addCommand(new ChannelGetCommand(this.bot, config.parentModule, this,
+            config.get, config.listName));
+        commandsMod.addCommand(new ChannelAddCommand(this.bot, config.parentModule, this,
+            config.add, config.listName.toLowerCase()));
+        commandsMod.addCommand(new ChannelRemoveCommand(this.bot, config.parentModule, this,
+            config.remove, config.listName.toLowerCase()));
     }
 
     public async getChannels(): Promise<Snowflake[]> {

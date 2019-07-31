@@ -113,9 +113,9 @@ export class XPUpdateAll extends RequiresXP {
     }
 
     async exec(message: Message) {
-        await message.channel.startTyping();
+        // await message.channel.startTyping();
         await this.xp.updateAll();
-        message.channel.stopTyping(true);
+        // message.channel.stopTyping(true);
         return message.channel.send("Full user update complete");
     }
 }

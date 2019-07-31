@@ -42,7 +42,7 @@ export class XPCommand extends RequiresXP {
         return message.channel.send(embed.setAuthor(user.tag, user.avatarURL())
             .setThumbnail(user.avatarURL())
             .addField("Total XP", xp, true)
-            .addField("Weekly XP", await this.xp.getRollingXP(user.id), true)
+            .addField("Rolling XP", await this.xp.getRollingXP(user.id), true)
             .addField("Level", XPModule.levelSummary(xp))
             .setColor(member != null ? member.displayColor : this.bot.displayColor()));
     }

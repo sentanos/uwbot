@@ -52,7 +52,13 @@ export class SuggestionsModule extends Module {
         if (user.id === this.bot.client.user.id) {
             return false;
         }
-        try {
+        if (!this.bot.guild.members.has(user.id)) {
+            dq.push({
+                user: user,
+                reason: "User left the guild"
+            });
+            return false;
+        } else {
             let member = this.bot.guild.member(user);
             if (!this.eligible(member)) {
                 dq.push({
@@ -61,13 +67,6 @@ export class SuggestionsModule extends Module {
                 });
                 return false;
             }
-        } catch (err) {
-            console.error(`Error checking eligibility of vote for ${user.id}: ${err.stack}`);
-            dq.push({
-                user: user,
-                reason: "User left the guild"
-            });
-            return false;
         }
         return true;
     }

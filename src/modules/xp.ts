@@ -140,15 +140,10 @@ export class XPModule extends Module {
                                notifyRemove?: PartialTextBasedChannelFields):
         Promise<boolean> {
         let member: GuildMember;
-        try {
-            member = await this.bot.guild.members.fetch(user);
-        } catch (e) {
-            console.error("Error fetching member for " + user + " for reward update: " + e.stack);
+        if (!this.bot.guild.members.has(user)) {
             return false;
         }
-        if (member == null) {
-            return false;
-        }
+        member = this.bot.guild.members.get(user);
         if (await this.checkReward(user)) {
             if (await this.addReward(member) && notifyAdd != null) {
                 await notifyAdd.send(new MessageEmbed()

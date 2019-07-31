@@ -28,7 +28,7 @@ export class SchedulerModule extends Module {
         }
     }
 
-    private async tick(job: Jobs, cron: CronJob): Promise<void> {
+    private async tick(job: Jobs): Promise<void> {
         if (this.bot.isEnabled(job.module)) {
             const mod = this.bot.getModule(job.module);
             await mod.event(job.event, job.payload);
@@ -39,14 +39,19 @@ export class SchedulerModule extends Module {
 
     private loadJob(job: Jobs): void {
         if (job.date.getTime() < new Date().getTime()) { // Date is in past
-            job.destroy();
+            this.tick(job)
+                .catch((err: Error) => {
+                    console.error(`Immediate execute of job ${job.id} for module ${job.module} with \
+                    event ${job.event} and payload ${job.payload} failed to fire with error: ${err.stack}`)
+                });
             return;
         }
         let scheduler = this;
         // We must use "function" here and not an arrow function because of the different ways
         // they treat "this"
+        // "this" in the cron job refers to the job itself
         let cron = new CronJob(job.date, function() {
-            scheduler.tick(job, this)
+            scheduler.tick(job)
                 .catch((err: Error) => {
                     console.error(`Cron job ${job.id}} for module ${job.module} with event \
                     ${job.event} and payload ${job.payload} failed to fire with error: ${err.stack}`);

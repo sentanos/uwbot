@@ -2,3 +2,5 @@ node_modules/
 *.js
 .git/
 .idea/
+*.sqlite
+filter.json

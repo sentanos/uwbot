@@ -136,8 +136,17 @@ export class SuggestionsModule extends Module {
         if (name === "SUGGESTIONS_VOTECOMPLETE") {
             const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
             const data: {oc: string, suggestion: string, voting: string} = JSON.parse(payload);
-            const suggestion = await channel.messages.fetch(data.suggestion);
-            const voting = await channel.messages.fetch(data.voting);
+            let suggestion: Message;
+            let voting: Message;
+            try {
+                suggestion = await channel.messages.fetch(data.suggestion);
+                voting = await channel.messages.fetch(data.voting);
+            } catch (err) {
+                if (err.message === "Unknown Message") {
+                    return;
+                }
+                throw err;
+            }
             await this.voteComplete(data.oc, suggestion, voting);
         }
     }

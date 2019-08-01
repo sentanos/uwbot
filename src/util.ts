@@ -169,6 +169,7 @@ export class PersistentChannelList {
     private readonly DB: Sequelize;
     private readonly bot: Bot;
     private list: ChannelListStatic;
+    private cache: Set<Snowflake>;
 
     constructor(bot: Bot, name: string) {
         this.DB = bot.DB;
@@ -179,10 +180,14 @@ export class PersistentChannelList {
             }
         }, {tableName: name});
         this.bot = bot;
+        this.cache = new Set<Snowflake>();
     }
 
     public async initialize(): Promise<void> {
         await this.list.sync();
+        (await this.list.findAll()).forEach((channel: ChannelList) => {
+            this.cache.add(channel.channelID);
+        });
     }
 
     public addCommands(config: PersistentChannelListConfig): void {
@@ -205,7 +210,7 @@ export class PersistentChannelList {
     }
 
     public async has(channel: Snowflake): Promise<boolean> {
-        return await this.list.findByPk(channel) != null;
+        return this.cache.has(channel);
     }
 
     public async add(channel: Snowflake): Promise<void> {
@@ -215,6 +220,7 @@ export class PersistentChannelList {
         await this.list.create({
             channelID: channel
         });
+        this.cache.add(channel);
     }
 
     public async remove(channel: Snowflake): Promise<void> {
@@ -226,5 +232,6 @@ export class PersistentChannelList {
                 channelID: channel
             }
         });
+        this.cache.delete(channel);
     }
 }

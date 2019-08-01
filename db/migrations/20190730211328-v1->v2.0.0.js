@@ -292,6 +292,30 @@ module.exports = {
          }
 
 
+         await queryInterface.createTable("settings", {
+            key: {
+               type: Sequelize.STRING,
+               primaryKey: true
+            },
+            value: {
+               type: Sequelize.TEXT,
+               allowNull: false
+            },
+            namespace: {
+               type: Sequelize.STRING,
+               allowNull: false
+            },
+            createdAt: {
+               type: Sequelize.DATE,
+               allowNull: false
+            },
+            updatedAt: {
+               type: Sequelize.DATE,
+               allowNull: false
+            }
+         }, {transaction});
+
+
          await transaction.commit();
       } catch (err) {
          await transaction.rollback();

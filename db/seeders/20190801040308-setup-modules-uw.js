@@ -7,7 +7,7 @@ module.exports = {
          "audit.channel": "546264496197468170",
          "commands.requiredRole": "546284932557963284",
          "suggestions.channel": "602691378484609024",
-         "suggestions.resultsChannels": "546392923093336094",
+         "suggestions.resultsChannels": "546392923093336094,604067855646064651",
          "suggestions.voteInterval": "259200",
          "suggestions.upvoteEmoji": "546284372173783052",
          "suggestions.downvoteEmoji": "546284370575753217",

@@ -139,8 +139,11 @@ export class AnonModule extends Module {
         this.messageRecords = new MessageRecords(this.settingsN("maxInactiveRecords"),
             this.settingsN("lifetime"));
         this.audit = this.bot.getModule("audit") as AuditModule;
-        await this.bot.getChannelByName("anonymous").send("I was restarted due to updates so IDs" +
-            " have been reset");
+        await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
+            .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
+                " I'm open source, check out my source code" +
+                " [here](https://github.com/sentanos/uwbot))")
+            .setColor(this.bot.displayColor()));
     }
 
     public reset(): void {

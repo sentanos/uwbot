@@ -78,7 +78,10 @@ export class Source extends Command {
     }
 
     async exec(message: Message) {
-        return message.channel.send("My source code is here: https://github.com/sentanos/uwbot\nI" +
-            " welcome contributions from anyone!");
+        return message.channel.send(new MessageEmbed()
+            .setDescription("My source code is [here](https://github.com/sentanos/uwbot). I" +
+                " welcome contributions from anyone!")
+            .setFooter("Raw URL: https://github.com/sentanos/uwbot")
+            .setColor(this.bot.displayColor()));
     }
 }

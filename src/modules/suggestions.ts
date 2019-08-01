@@ -45,7 +45,7 @@ export class SuggestionsModule extends Module {
     }
 
     private eligible(member: GuildMember): boolean {
-        return !this.settingsHas("disallowRole") || member.roles.has(this.settings("disallowRole"));
+        return !this.settingsHas("disallowRole") || !member.roles.has(this.settings("disallowRole"));
     }
 
     private checkEligible(user: User, dq: Disqualification[]): boolean {

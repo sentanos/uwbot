@@ -1,5 +1,5 @@
 # uwbot
-A bot for the UW discord, mostly for anonymous chatting.
+A bot for the UW discord
 
 ## Running with docker
 The repository is automatically synced with a public docker repository. To use with docker, first 
@@ -19,7 +19,7 @@ Also create an `env.list` file that will contain environment variables passed to
 to [env.example.list](env.example.list) for the format and required variables. Copy and paste 
 your discord token to the file in the specified location. For running with docker, the 
 configuration path and database path will be the same as in the example file. That is: 
-`CONFIG_PATH=/external/config.json` and `DATABASE_PATH=/external/store.db`
+`CONFIG_PATH=/external/config.json` and `DATABASE_PATH=/external/store.sqlite`
 
 To finally run the bot, run the following command (while still in the uwbot folder):
 ```bash

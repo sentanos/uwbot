@@ -24,6 +24,18 @@ export const generateUID = (): AnonID => {
     return uuid();
 };
 
+export const alphabetical = (arr: string[]): string[] => {
+    return arr.sort((a: string, b: string): number => {
+        if (a < b) {
+            return -1;
+        } else if (a > b) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+};
+
 export const formatInterval = (seconds: number): string => {
     let value: number;
     let unit: string;

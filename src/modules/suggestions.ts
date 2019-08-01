@@ -18,10 +18,10 @@ const settingsConfig: SettingsConfig = {
         description: "The time interval in seconds during which votes are accepted for a suggestion"
     },
     upvoteEmoji: {
-        description: "The upvote emoji"
+        description: "The upvote emoji. If you are using a custom emoji, enter the emoji ID."
     },
     downvoteEmoji: {
-        description: "The downvote emoji"
+        description: "The downvote emoji. If you are using a custom emoji, enter the emoji ID."
     },
     disallowRole: {
         description: "Role ID that is not allowed to vote",

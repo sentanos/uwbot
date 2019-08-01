@@ -9,7 +9,8 @@ import {SettingsConfig} from "./settings.skip";
 
 const settingsConfig: SettingsConfig = {
     emoji: {
-        description: "The emoji used to pin messages"
+        description: "The emoji used to pin messages. If you are using a custom emoji, enter the" +
+            " emoji name."
     }
 };
 

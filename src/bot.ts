@@ -241,6 +241,13 @@ export class Bot {
                 console.error(`Error loading module ${module}: ${err.stack}`);
             }
         }
+        for (const module in this.modules) {
+            try {
+                await this.modules[module].modulesEnabled()
+            } catch (err) {
+                console.error(`Error executing modulesEnabled for ${module}: ${err.stack}`)
+            }
+        }
         return num;
     }
 

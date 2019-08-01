@@ -60,6 +60,10 @@ export abstract class Module {
         return Promise.resolve();
     }
 
+    public async modulesEnabled(): Promise<void> {
+        return Promise.resolve();
+    }
+
     public async unload(): Promise<void> {
         for (let i = 0; i < this.intervals.length; i++) {
             clearInterval(this.intervals[i]);

@@ -28,7 +28,7 @@ class RequiresSettings extends Command {
 export class Settings extends RequiresSettings {
     constructor(bot) {
         super(bot, {
-            names: ["settings list", "settings ls"],
+            names: ["settings"],
             usages: {
                 "List settings namespaces": [],
                 "List settings in a namespace": ["namespace"]
@@ -42,13 +42,13 @@ export class Settings extends RequiresSettings {
         if (namespace == null) {
             const namespaces: string[] = this.settings.getNamespaces();
             return message.channel.send(new MessageEmbed()
-                .setTitle("Namespaces")
+                .setTitle("Settings Namespaces")
                 .setDescription(listOrNone(namespaces))
                 .setColor(this.bot.displayColor()));
         } else {
             const settings: LocalSetting[] = this.settings.getInNamespace(namespace);
             const embed: MessageEmbed = new MessageEmbed()
-                .setTitle("Settings")
+                .setTitle("Settings > " + namespace)
                 .setColor(this.bot.displayColor());
             if (settings.length === 0) {
                 embed.setDescription("_None_");
@@ -59,7 +59,8 @@ export class Settings extends RequiresSettings {
                     if (setting.value !== "") {
                         val = setting.value;
                     }
-                    embed.addField(`${setting.key}: ${val}`, setting.description);
+                    embed.addField(`${setting.key}: ${val}`,
+                        (setting.optional ? "(Optional) " : "") + setting.description);
                 }
             }
             return message.channel.send(embed);

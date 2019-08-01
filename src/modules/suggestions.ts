@@ -9,8 +9,10 @@ const settingsConfig: SettingsConfig = {
     channel: {
         description: "The suggestions channel ID"
     },
-    resultsChannel: {
-        description: "The channel ID where voting results are sent"
+    resultsChannels: {
+        description: "A comma separated list of channel IDs where vote results are sent. The" +
+            " first channel in the list is the one that will be linked to in the original" +
+            " voting message."
     },
     voteInterval: {
         description: "The time interval in seconds during which votes are accepted for a suggestion"
@@ -71,7 +73,8 @@ export class SuggestionsModule extends Module {
         return true;
     }
 
-    private async voteComplete(suggestion: Message, voting: Message): Promise<void> {
+    private async voteComplete(originalContent: string, suggestion: Message, voting: Message):
+        Promise<void> {
         const upReact = voting.reactions.get(this.settings("upvoteEmoji"));
         const downReact = voting.reactions.get(this.settings("downvoteEmoji"));
         let up = new Set<string>(upReact.users.keyArray());
@@ -102,17 +105,26 @@ export class SuggestionsModule extends Module {
         let downTags: string[] = [...down].map(id => downReact.users.get(id).tag);
         let dqTags: string[] = dq.map(dqd => `${dqd.user.tag} (${dqd.reason})`);
 
-        const channel = this.bot.guild.channels.get(this.settings("resultsChannel")) as TextChannel;
-        const results = await channel.send(new MessageEmbed()
+        let results: Message;
+        const resultEmbed = new MessageEmbed()
             .setTitle("Voting Ended")
             .setDescription(`Voting has ended for the following suggestion and the results are below: \
-            \`\`\`${suggestion.content}\`\`\``)
+            \`\`\`${originalContent}\`\`\``)
             .addField(`For - ${up.size}`, listOrNone(upTags), true)
             .addField(`Against - ${down.size}`, listOrNone(downTags), true)
             .addField(`Not Counted`, listOrNone(dqTags) +
                 `\n\n[Jump to suggestion](${suggestion.url})`)
             .setAuthor(suggestion.author.tag, suggestion.author.avatarURL())
-            .setColor(this.bot.displayColor())) as Message;
+            .setColor(this.bot.displayColor());
+
+        const ids = this.settingsArr("resultsChannels");
+        for (let i = 0; i < ids.length; i++) {
+            const channel = this.bot.guild.channels.get(ids[i]) as TextChannel;
+            let message = await channel.send(resultEmbed);
+            if (i === 0) {
+                results = message as Message;
+            }
+        }
         await voting.edit(new MessageEmbed()
             .setDescription("Voting has ended for the above suggestion. [Click here for the" +
                 " results.](" + results.url + ")")
@@ -123,10 +135,10 @@ export class SuggestionsModule extends Module {
     public async event(name: string, payload: string) {
         if (name === "SUGGESTIONS_VOTECOMPLETE") {
             const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
-            const data: {suggestion: string, voting: string} = JSON.parse(payload);
+            const data: {oc: string, suggestion: string, voting: string} = JSON.parse(payload);
             const suggestion = await channel.messages.fetch(data.suggestion);
             const voting = await channel.messages.fetch(data.voting);
-            await this.voteComplete(suggestion, voting);
+            await this.voteComplete(data.oc, suggestion, voting);
         }
     }
 
@@ -144,7 +156,8 @@ export class SuggestionsModule extends Module {
         await this.scheduler.schedule("suggestions", end, "SUGGESTIONS_VOTECOMPLETE",
             JSON.stringify({
                 suggestion: message.id,
-                voting: voting.id
+                voting: voting.id,
+                oc: message.content
             }));
         await voting.react(this.settings("upvoteEmoji"));
         await voting.react(this.settings("downvoteEmoji"));

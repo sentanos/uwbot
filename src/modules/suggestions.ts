@@ -150,7 +150,8 @@ export class SuggestionsModule extends Module {
         const end = new Date(new Date().getTime() + (this.settingsN("voteInterval") * 1000));
         const voting: Message = await message.channel.send(new MessageEmbed()
             .setDescription("Vote here for the above suggestion")
-            .setFooter(`Voting will end on ${end.toLocaleString()}`)
+            .setFooter(`Voting will end on ${end.toLocaleString('en-US', 
+                {timeZone: "America/Los_Angeles"})}`)
             .setAuthor(message.author.tag, message.author.avatarURL())
             .setColor(this.bot.displayColor())) as Message;
         await this.scheduler.schedule("suggestions", end, "SUGGESTIONS_VOTECOMPLETE",

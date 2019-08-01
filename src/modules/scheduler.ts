@@ -12,6 +12,9 @@ export class SchedulerModule extends Module {
 
     public async initialize() {
         this.jobs = new Map<number, CronJob>();
+    }
+
+    public async modulesEnabled() {
         await this.loadJobs();
     }
 
@@ -32,6 +35,8 @@ export class SchedulerModule extends Module {
         if (this.bot.isEnabled(job.module)) {
             const mod = this.bot.getModule(job.module);
             await mod.event(job.event, job.payload);
+        } else {
+            throw new Error("Module disabled");
         }
         this.jobs.delete(job.id);
         await job.destroy();

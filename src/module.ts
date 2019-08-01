@@ -82,4 +82,8 @@ export abstract class Module {
     public settingsN(key: string): number {
         return parseInt(this.settings(key), 10);
     }
+
+    public settingsArr(key: string): string[] {
+        return this.settings(key).split(",");
+    }
 }

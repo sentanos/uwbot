@@ -128,8 +128,6 @@ export class AnonModule extends Module {
     private messageRecords: MessageRecords;
     private audit: AuditModule;
 
-    // TODO: LOG IN AUDIT!
-
     constructor(bot: Bot) {
         super(bot, "anon", ["audit"], settingsConfig);
         this.guild = this.bot.guild;

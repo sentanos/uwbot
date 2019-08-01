@@ -1,4 +1,10 @@
-import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
+import {
+    Availability,
+    Command,
+    CommandConfig,
+    PartialCommandConfig,
+    Permission
+} from "../modules/commands";
 import {Bot} from "../bot";
 import {GuildMember, Message, MessageEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
@@ -6,8 +12,10 @@ import {XP, XPModule} from "../modules/xp";
 class RequiresXP extends Command {
     protected xp: XPModule;
 
-    constructor(bot: Bot, config: CommandConfig) {
-        super(bot, config);
+    constructor(bot: Bot, config: PartialCommandConfig) {
+        let withCategory = config as CommandConfig;
+        withCategory.category = "xp";
+        super(bot, withCategory);
     }
 
     async run(message?: Message, ...args: string[]): Promise<any> {

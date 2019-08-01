@@ -22,11 +22,28 @@ export type CommandUsage = {
     [key: string]: string[]
 }
 
-export type CommandConfig = {
+export type CommandCategory =
+    "bot"
+    | "anon"
+    | "whitelist"
+    | "pin"
+    | "xp"
+    | "modules"
+    | "settings"
+
+export type PartialCommandConfig = {
     names: string[],
     usages: CommandUsage,
     permission: Permission,
     availability: Availability
+}
+
+export type CommandConfig = {
+    names: string[],
+    usages: CommandUsage,
+    permission: Permission,
+    availability: Availability,
+    category: CommandCategory
 }
 
 export enum Permission {
@@ -56,6 +73,8 @@ const settingsConfig: SettingsConfig = {
         optional: true
     }
 };
+
+// TODO: ALPHABETICAL
 
 export class CommandsModule extends Module {
     public readonly commands: Command[];
@@ -219,6 +238,7 @@ export abstract class Command {
     public readonly usages: CommandUsage;
     public readonly permission: Permission;
     public readonly availability: Availability;
+    public readonly category: CommandCategory;
     public readonly bot: Bot;
 
     protected constructor(bot: Bot, config: CommandConfig) {
@@ -227,6 +247,7 @@ export abstract class Command {
         this.usages = config.usages;
         this.permission = config.permission;
         this.availability = config.availability;
+        this.category = config.category;
     }
 
     // exec is the raw source of the command, and does not perform any checks

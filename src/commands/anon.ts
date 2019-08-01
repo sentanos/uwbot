@@ -1,4 +1,10 @@
-import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
+import {
+    Availability,
+    Command, CommandCategory,
+    CommandConfig,
+    PartialCommandConfig,
+    Permission
+} from "../modules/commands";
 import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {AnonModule, AnonUser} from "../modules/anon";
 import {randomColor} from "../util";
@@ -7,8 +13,10 @@ import {Bot} from "../bot";
 class RequiresAnon extends Command {
     protected anon: AnonModule;
 
-    constructor(bot: Bot, config: CommandConfig) {
-        super(bot, config);
+    constructor(bot: Bot, config: PartialCommandConfig) {
+        let withCategory = config as CommandConfig;
+        withCategory.category = "anon";
+        super(bot, withCategory);
     }
 
     async run(message?: Message, ...args: string[]): Promise<any> {

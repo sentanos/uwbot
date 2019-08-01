@@ -11,7 +11,8 @@ export class Modules extends Command {
                 "List modules": []
             },
             permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.WhitelistedGuildChannelsOnly,
+            category: "modules"
         });
     }
 
@@ -57,7 +58,8 @@ export class ModulesEnable extends Command {
                 "Enable a module": ["module"]
             },
             permission: Permission.UserKick,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.WhitelistedGuildChannelsOnly,
+            category: "modules"
         });
     }
 
@@ -78,10 +80,11 @@ export class ModulesDisable extends Command {
         super(bot, {
             names: ["modules disable"],
             usages: {
-                "Enable a module": ["module"]
+                "Disable a module": ["module"]
             },
             permission: Permission.UserKick,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.WhitelistedGuildChannelsOnly,
+            category: "modules"
         });
     }
 
@@ -105,7 +108,8 @@ export class ModulesReload extends Command {
                 "Reload a module and its dependents": ["module"]
             },
             permission: Permission.UserKick,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.WhitelistedGuildChannelsOnly,
+            category: "modules"
         });
     }
 

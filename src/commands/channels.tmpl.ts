@@ -1,4 +1,4 @@
-import {Command} from "../modules/commands";
+import {Command, CommandCategory} from "../modules/commands";
 import {PersistentChannelList, PersistentChannelListConfigPart} from "../util";
 import {Bot} from "../bot";
 import {Message, MessageEmbed, Snowflake} from "discord.js";
@@ -8,7 +8,7 @@ class ChannelCommand extends Command {
     public readonly listName: string;
     private readonly parentModule: string;
 
-    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+    constructor(bot: Bot, parentModule: CommandCategory, channels: PersistentChannelList,
                 config: PersistentChannelListConfigPart, listName: string, args: string[]) {
         super(bot, {
             names: [config.command],
@@ -16,7 +16,8 @@ class ChannelCommand extends Command {
                 [config.usage]: args
             },
             permission: config.permission,
-            availability: config.availability
+            availability: config.availability,
+            category: parentModule
         });
 
         this.channels = channels;
@@ -31,7 +32,7 @@ class ChannelCommand extends Command {
 }
 
 export class ChannelGetCommand extends ChannelCommand {
-    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+    constructor(bot: Bot, parentModule: CommandCategory, channels: PersistentChannelList,
                 config: PersistentChannelListConfigPart, listName: string) {
         super(bot, parentModule, channels, config, listName, []);
     }
@@ -55,7 +56,7 @@ export class ChannelGetCommand extends ChannelCommand {
 }
 
 export class ChannelAddCommand extends ChannelCommand {
-    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+    constructor(bot: Bot, parentModule: CommandCategory, channels: PersistentChannelList,
                 config: PersistentChannelListConfigPart, listName: string) {
         super(bot, parentModule, channels, config, listName, ["channelID"]);
     }
@@ -72,7 +73,7 @@ export class ChannelAddCommand extends ChannelCommand {
 }
 
 export class ChannelRemoveCommand extends ChannelCommand {
-    constructor(bot: Bot, parentModule: string, channels: PersistentChannelList,
+    constructor(bot: Bot, parentModule: CommandCategory, channels: PersistentChannelList,
                 config: PersistentChannelListConfigPart, listName: string) {
         super(bot, parentModule, channels, config, listName, ["channelID"]);
     }

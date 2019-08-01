@@ -1,4 +1,10 @@
-import {Availability, Command, CommandConfig, Permission} from "../modules/commands";
+import {
+    Availability,
+    Command,
+    CommandConfig,
+    PartialCommandConfig,
+    Permission
+} from "../modules/commands";
 import {Message, MessageEmbed} from "discord.js";
 import {Bot} from "../bot";
 import {LocalSetting, SettingsModule} from "../modules/settings.skip";
@@ -7,8 +13,10 @@ import {listOrNone} from "../util";
 class RequiresSettings extends Command {
     protected settings: SettingsModule;
 
-    constructor(bot: Bot, config: CommandConfig) {
-        super(bot, config);
+    constructor(bot: Bot, config: PartialCommandConfig) {
+        let withCategory = config as CommandConfig;
+        withCategory.category = "settings";
+        super(bot, withCategory);
     }
 
     async run(message?: Message, ...args: string[]): Promise<any> {

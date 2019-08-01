@@ -3,7 +3,7 @@ import {AnonID} from "./modules/anon";
 import uuid from "uuid/v4";
 import {Sequelize, Model, BuildOptions, DataTypes} from "sequelize";
 import {Snowflake} from "discord.js";
-import {Availability, CommandsModule, Permission} from "./modules/commands";
+import {Availability, CommandCategory, CommandsModule, Permission} from "./modules/commands";
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 
@@ -151,7 +151,7 @@ export type PersistentChannelListConfigPart = {
 
 export type PersistentChannelListConfig = {
     listName: string,
-    parentModule: string,
+    parentModule: CommandCategory,
     get: PersistentChannelListConfigPart,
     add: PersistentChannelListConfigPart,
     remove: PersistentChannelListConfigPart

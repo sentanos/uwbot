@@ -92,12 +92,15 @@ export class XPLeaderboard extends RequiresXP {
         let users: string[] = [];
         for (let i = 0; i < lb.length; i++) {
             const row: {userID: Snowflake, totalXp: XP} = lb[i];
-            let name = row.userID;
-            if (this.bot.guild.members.has(row.userID)) {
+            let name;
+            let inGuild = this.bot.guild.members.has(row.userID);
+            if (inGuild) {
                 name = this.bot.guild.members.get(row.userID).user.tag;
+            } else {
+                name = (await this.bot.client.users.fetch(row.userID)).tag;
             }
-            users.push((i + 1 + (pageNum - 1) * pageSize) + ". " + name + ": " + row.totalXp +
-                "xp (Level " + XPModule.levelFromXp(row.totalXp) + ")");
+            users.push(`${!inGuild ? "~~" : ""}${i + 1 + (pageNum - 1) * pageSize}. ${name}: \
+            ${row.totalXp} xp (Level ${XPModule.levelFromXp(row.totalXp)})${!inGuild ? "~~" : ""}`);
         }
         return message.channel.send(new MessageEmbed()
             .setTitle("XP Leaderboard")

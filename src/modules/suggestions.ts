@@ -77,6 +77,7 @@ export class SuggestionsModule extends Module {
         Promise<void> {
         const upReact = voting.reactions.get(this.settings("upvoteEmoji"));
         const downReact = voting.reactions.get(this.settings("downvoteEmoji"));
+        await Promise.all([upReact.users.fetch(), downReact.users.fetch()]);
         let up = new Set<string>(upReact.users.keyArray());
         let down = new Set<string>(downReact.users.keyArray());
         let dq: Disqualification[] = [];

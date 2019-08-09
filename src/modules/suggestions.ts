@@ -127,8 +127,8 @@ export class SuggestionsModule extends Module {
             }
         }
         await voting.edit(new MessageEmbed()
-            .setDescription("Voting has ended for the above suggestion. [Click here for the" +
-                " results.](" + results.url + ")")
+            .setDescription(`Voting has ended for the above suggestion with ${up.size} for and \
+            ${down.size} against. [Click here to see detailed results.](${results.url})`)
             .setAuthor(suggestion.author.tag, suggestion.author.avatarURL())
             .setColor(this.bot.displayColor()));
     }

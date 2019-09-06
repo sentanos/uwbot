@@ -17,11 +17,14 @@ export type CommandAndAlias = {
     alias: string
 }
 
-// Description: [Parameters]
+// Possible usages of a given command where the key is a description of the command and the
+// value is an array of strings with each parameter of the command.
+// For example: ["Send an anonymous message to another anonymous user"]: ["id", "message"]
 export type CommandUsage = {
     [key: string]: string[]
 }
 
+// The category the command belongs to
 export type CommandCategory =
     "bot"
     | "anon"
@@ -38,7 +41,9 @@ export type PartialCommandConfig = {
     availability: Availability
 }
 
+// Command configuration. See individual types for more details
 export type CommandConfig = {
+    // An array of names the command can be called by, with the first name being preferred
     names: string[],
     usages: CommandUsage,
     permission: Permission,
@@ -46,16 +51,30 @@ export type CommandConfig = {
     category: CommandCategory
 }
 
+// Determines what is required for a user to run a command
 export enum Permission {
+    // Allowed if the user has kick permissions in the bot guild
     UserKick,
-    VerifiedGuildMember, // ONLY IF SPECIFIED IN COMMANDS MODULE SETTINGS, OTHERWISE NONE
+    // If a role ID is specified in the "commands.requiredRole" setting, permission is only
+    // given to those who are both in the bot guild and have the required role in that guild
+    //
+    // IF A ROLE ID IS NOT SPECIFIED, BEHAVES LIKE THE NONE PERMISSION
+    VerifiedGuildMember,
+    // All users have permission
     None
 }
 
+// Determines where a command can be used and is checked before permission
 export enum Availability {
+    // Can only be used in DMs to the bot
     ChatOnly,
+    // Can only be used in the bot guild
     GuildOnly,
-    WhitelistedGuildChannelsOnly, // ONLY IF WHITELIST MODULE IS ENABLED, OTHERWISE GUILDONLY
+    // If the whitelist module is enabled, will only be allowed in whitelisted channels.
+    //
+    // IF THE WHITELIST MODULE IS NOT ENABLED, BEHAVES LIKE GUILDONLY
+    WhitelistedGuildChannelsOnly,
+    // Can be used anywhere
     All
 }
 
@@ -69,12 +88,13 @@ const settingsConfig: SettingsConfig = {
         default: " "
     },
     requiredRole: {
-        description: "The role required for the VerifiedGuildMember permission",
+        description: "The role ID required for the VerifiedGuildMember permission",
         optional: true
     }
 };
 
 export class CommandsModule extends Module {
+    // An array of all commands
     public readonly commands: Command[];
     private whitelist: WhitelistModule;
     private whitelistEnabled: boolean;
@@ -94,6 +114,9 @@ export class CommandsModule extends Module {
         console.log("Loaded " + num + " commands");
     }
 
+    // Loads all commands from the commands folder EXCEPT those that end with ".tmpl.js" which
+    // means they are a template that should not be loaded but may be used as a dependency for
+    // something else
     public async loadCommands(): Promise<number> {
         return this.bot.forEachClassInFile("./commands",
             (name: string, constructor: any): Promise<boolean> => {
@@ -103,12 +126,15 @@ export class CommandsModule extends Module {
                 !filename.endsWith(".tmpl.js"));
     }
 
-
+    // Adds the given command, making it available for use
     public addCommand(command: Command): void {
         this.commands.push(command);
     }
 
-    // Find the command specific in content.
+    // Find the command specified in content
+    // Because command names may contain the command separator and may also contain the name of
+    // other commands, command matching works by finding the longest command name that matches
+    // the one used in content
     public findCommand(content: string):
         CommandAndAlias | void {
         let found: boolean = false;
@@ -132,7 +158,8 @@ export class CommandsModule extends Module {
         return res;
     }
 
-    // Receives GuildMember _of the bot guild_
+    // Given a GuildMember _of the bot guild_, checks if they have the given permission. Returns
+    // true if they do and false if they do not.
     public checkPermission(user: GuildMember, permission: Permission): boolean {
         switch(permission) {
             case Permission.None:
@@ -149,6 +176,8 @@ export class CommandsModule extends Module {
         return false;
     };
 
+    // Given a message and availability, returns true if the message matches the availability
+    // and false if it does not
     public checkAvailability = async (message: Message, availability: Availability):
         Promise<boolean> => {
         switch (availability) {
@@ -166,6 +195,7 @@ export class CommandsModule extends Module {
         }
     };
 
+    // Event listener
     public onMessage(message: Message) {
         if (message.author.bot) {
             return
@@ -194,8 +224,11 @@ export class CommandsModule extends Module {
         }
     }
 
-    // Given a message with a command, returns the raw content that comes after the message
-    // For example: ">anon 123    456   7  " will preserve spaces correctly
+    // Given a message with a command, returns the raw content that comes after the message with
+    // the given offset of separators.
+    //
+    // For example: if the prefix is > and the separator is a space then ">message 123 hello world"
+    // and an offset index of 1 will return "hello world"
     public getRawContent(content: string, offsetIndex: number = 0): string {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
             this.settings("prefix").length));
@@ -212,6 +245,8 @@ export class CommandsModule extends Module {
         return afterCommand.substring(idx + this.settings("separator").length);
     }
 
+    // Given a message, returns a command, the alias used, and command arguments.
+    // If no command was called in the message, returns null.
     private parseCommand(content: string): ParsedCommand | void {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
             this.settings("prefix").length));
@@ -232,12 +267,17 @@ export class CommandsModule extends Module {
 }
 
 export abstract class Command {
+    // An array of names which the command can be called by, with the first name being preferred
     public readonly names: string[];
+    // A reference to the bot the command belongs to
+    public readonly bot: Bot;
+
+    // For descriptions of the below fields, refer to CommandConfig
+
     public readonly usages: CommandUsage;
     public readonly permission: Permission;
     public readonly availability: Availability;
     public readonly category: CommandCategory;
-    public readonly bot: Bot;
 
     protected constructor(bot: Bot, config: CommandConfig) {
         this.bot = bot;
@@ -298,6 +338,13 @@ export abstract class Command {
         return this.exec(message, ...args);
     }
 
+    // Includes usages with examples that use the preferred command name and the current prefix and
+    // separator.
+    // Example result if the prefix is > and the separator is a space:
+    //
+    // >setcolor: Set anon color to a random color
+    // >setcolor <hex>: Set anon color to the given hex color
+    // >setcolor <r> <g> <b>: Set anon color to the given r, g, b value
     toString(): string {
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
 

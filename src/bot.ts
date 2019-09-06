@@ -17,12 +17,17 @@ type Modules = {
 export class Bot {
     public readonly client: Client;
     public readonly DB: Sequelize;
+    // The guild the bot will work in
     public readonly guild: Guild;
     public readonly config: BotConfig;
     public readonly filter: string[];
+    // All modules
     public readonly modules: Modules;
+    // Names of loaded modules
     private readonly loaded: Set<string>;
+    // Names of enabled modules
     private readonly enabled: Set<string>;
+    // Specified reference to the settings module
     private settings: SettingsModule;
 
     constructor(client: Client, sequelize: Sequelize, config: BotConfig, filter: string[]) {
@@ -36,6 +41,7 @@ export class Bot {
         this.enabled = new Set<string>();
     }
 
+    // Prepares the bot for use asynchronously
     public async initialize(): Promise<void> {
         initializeDB(this.DB);
         await this.DB.sync();
@@ -47,11 +53,13 @@ export class Bot {
         console.log("Found " + num + " modules");
     }
 
+    // Returns the display color of the client in the bot guild
     public displayColor(): ColorResolvable {
         return this.guild.member(this.client.user).displayColor;
     }
 
-    // Get a user's ID based on their nickname/username/tag/userID
+    // Returns a user based on their nickname/username/tag/userID
+    // Returns null if no user is found
     public async getUser(guild: Guild, find: string): Promise<User | void> {
         find = find.toLowerCase();
         let member: GuildMember;
@@ -73,6 +81,8 @@ export class Bot {
         return member.user;
     }
 
+    // Returns a user based on their mention/nickname/username/tag/userID
+    // Throws an error if no user was found
     public async getUserFromMessage(message: Message): Promise<User> {
         if (message.mentions.members.size > 0) {
             return message.mentions.members.first().user;
@@ -87,8 +97,8 @@ export class Bot {
         }
     }
 
-    // Returns the channel in the bot's guild with the given name. Errors if such a channel does
-    // not exist.
+    // Returns the channel in the bot's guild with the given name.
+    // Throws an error if such a channel does not exist.
     public getChannelByName(name: string): TextChannel {
         const channel: TextChannel | void = this.guild.channels.find(
             ch => ch.name === name) as TextChannel;
@@ -102,6 +112,7 @@ export class Bot {
         this.modules[module.name] = module;
     }
 
+    // Loads a module
     // No circular dependencies!
     private async load(module: Module): Promise<void> {
         if (this.loaded.has(module.name)) {
@@ -128,6 +139,9 @@ export class Bot {
         this.loaded.add(module.name);
     }
 
+    // Returns true if the module should be enabled based on whether or not it is required and
+    // whether or not it has been persistently enabled in the past. Returns false if it should
+    // not be enabled.
     private async shouldBeEnabled(module: Module): Promise<boolean> {
         if (module.state === ModuleState.Required) {
             return true;
@@ -141,15 +155,19 @@ export class Bot {
         }
     }
 
+    // Persistently sets if the module with the given name should be enabled (enabled is true) or
+    // disabled (enabled is false)
     public async setEnabled(moduleName: string, enabled: boolean): Promise<void> {
         await this.settings.persistentSet(`internal.modules.${moduleName}.enabled`,
             enabled ? "true": "false");
     }
 
+    // Returns true if the module is enabled and false if it is not
     public isEnabled(moduleName: string): boolean {
         return this.enabled.has(moduleName);
     }
 
+    // Checks if the required settings for a particular are set and throws an error if they are not.
     private async checkSettings(module: Module): Promise<void> {
         if (module.settingsConfig != null) {
             if (!(await this.settings.config(module.settingsConfig, module.name))) {
@@ -160,6 +178,9 @@ export class Bot {
         }
     }
 
+    // Enables a module
+    // Throws an error if: the module is already enabled, a dependency of the module is not
+    // enabled, or not all the module settings have been set yet
     public async enable(module: Module): Promise<boolean> {
         if (module.state === ModuleState.Enabled) {
             throw new Error("SAFE: Module is already enabled");
@@ -179,6 +200,9 @@ export class Bot {
         return true;
     }
 
+    // Disables a module
+    // Throws an error if: the module is required, the module is already enabled, or a dependent
+    // of the module is still enabled.
     public async disable(module: Module): Promise<void> {
         if (module.state === ModuleState.Required) {
             throw new Error("SAFE: Cannot disable required module");
@@ -211,6 +235,8 @@ export class Bot {
         }
     }
 
+    // Reloads (disable and then immediately enable) a module
+    // Unlike disable, can be used on required modules
     public async reload(module: Module): Promise<void> {
         await module.unload();
         await module.initialize();
@@ -222,6 +248,7 @@ export class Bot {
         }
     }
 
+    // Loads all modules in the modules folder
     public async loadModules(): Promise<number> {
         const num: number = await this.forEachClassInFile("./modules",
                 async (name: string, constructor: any): Promise<boolean> => {
@@ -251,6 +278,7 @@ export class Bot {
         return num;
     }
 
+    // Get a module by its name
     public getModule(name: string): Module {
         const module: Module = this.modules[name];
         if (module.state === ModuleState.Disabled) {
@@ -259,6 +287,15 @@ export class Bot {
         return module;
     }
 
+    // Given a location, imports all applicable files and calls func with the name of every
+    // class in the file and the class itself (which can be created with new). func should
+    // return true if the class was created or false if it was not.
+    //
+    // If validate is not specified, applicable files are all .js files. Otherwise, whether or
+    // not a file is applicable will be determined by the validate function. It is called with
+    // the filename. If it returns true, the file will be loaded; otherwise, it will not.
+    //
+    // Returns the number of classes successfully loaded (determined by the result of func).
     public async forEachClassInFile(location: string, func: (name: string, aClass: any) =>
         Promise<boolean>, validate?: (filename: string) => boolean): Promise<number> {
         if (validate == null) {

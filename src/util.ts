@@ -1,5 +1,4 @@
 import {randomBytes} from "crypto";
-import {AnonID} from "./modules/anon";
 import uuid from "uuid/v4";
 import {Sequelize, Model, BuildOptions, DataTypes} from "sequelize";
 import {Snowflake} from "discord.js";
@@ -20,7 +19,7 @@ export const randomColor = (): number => {
     return random(16777215);
 };
 
-export const generateUID = (): AnonID => {
+export const generateUID = (): string => {
     return uuid();
 };
 

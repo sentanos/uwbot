@@ -29,7 +29,6 @@ import {Logs} from "../database/models/logs";
 //     `maxInactiveRecords` when the extra ones expire.
 
 export type AnonAlias = number;
-export type AnonID = string;
 export type BlacklistResponse = {
     blacklistID: string,
     anonAlias: AnonAlias

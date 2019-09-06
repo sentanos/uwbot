@@ -158,7 +158,7 @@ export class CommandsModule extends Module {
                 return message.guild != null;
             case Availability.WhitelistedGuildChannelsOnly:
                 return message.guild != null && (!this.whitelistEnabled ||
-                    this.whitelist.channels.has(message.channel.id));
+                    await this.whitelist.channels.has(message.channel.id));
             case Availability.All:
                 return true;
             default:

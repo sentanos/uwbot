@@ -146,8 +146,12 @@ export class Blacklist extends RequiresAnon {
 
     async exec(message: Message, messageID: string) {
         const blacklistResponse = await this.anon.doBlacklist(messageID, message.author);
-        return message.reply(`Blacklisted \`${blacklistResponse.anonAlias}\`.
-ID: ${blacklistResponse.blacklistID}`)
+        return message.reply(
+            new MessageEmbed()
+                .setDescription(`Blacklisted \`${blacklistResponse.anonAlias}\`. \
+                    ID: ${blacklistResponse.blacklistID}`)
+                .setColor(this.bot.displayColor())
+        )
     }
 }
 

@@ -8,7 +8,7 @@ import {
     DMChannel
 } from "discord.js"
 import {createHash} from "crypto";
-import {generateUID, random, randomColor, Queue} from "../util";
+import {generateUID, random, randomColor, Queue, formatInterval, timeDiff} from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
@@ -16,6 +16,8 @@ import {AuditModule} from "./audit";
 import {Blacklist} from "../database/models/blacklist";
 import {SettingsConfig} from "./settings.skip";
 import {Logs} from "../database/models/logs";
+import {Op} from "sequelize";
+import {SchedulerModule} from "./scheduler";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -126,9 +128,10 @@ export class AnonModule extends Module {
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
     private audit: AuditModule;
+    private scheduler: SchedulerModule;
 
     constructor(bot: Bot) {
-        super(bot, "anon", ["audit"], settingsConfig);
+        super(bot, "anon", ["audit", "scheduler"], settingsConfig);
         this.guild = this.bot.guild;
         this.filter = this.bot.filter;
     }
@@ -138,11 +141,18 @@ export class AnonModule extends Module {
         this.messageRecords = new MessageRecords(this.settingsN("maxInactiveRecords"),
             this.settingsN("lifetime"));
         this.audit = this.bot.getModule("audit") as AuditModule;
+        this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
         await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
             .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
                 " I'm open source, check out my source code" +
                 " [here](https://github.com/sentanos/uwbot))")
             .setColor(this.bot.displayColor()));
+    }
+
+    public async event(name: string, payload: string): Promise<void> {
+        if (name === "ANON_TIMEOUT_END") {
+            await this.unblacklist(payload);
+        }
     }
 
     public reset(): void {
@@ -173,8 +183,14 @@ export class AnonModule extends Module {
     }
 
     private async initAnonUser(user: User) {
-        if (await this.isBlacklisted(user.id)) {
-            throw new Error("SAFE: You are blacklisted")
+        const status: Blacklist | void = await this.blacklistStatus(user.id);
+        if (status instanceof Blacklist) {
+            if (status.end != null) {
+                throw new Error("SAFE: You are timed out for " + formatInterval(Math.round(
+                    timeDiff(status.end, new Date()) / 1000)))
+            } else {
+                throw new Error("SAFE: You are blacklisted")
+            }
         }
         this.users.set(user.id, new AnonUser(this, user, this.randomFreeAlias()));
     }
@@ -182,9 +198,15 @@ export class AnonModule extends Module {
     public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
         const res = await Logs.findOne({
             where: {
-                action: "BLACKLIST",
+                action: {
+                    [Op.or]: [
+                        "BLACKLIST",
+                        "TIMEOUT"
+                    ]
+                },
                 target: blacklistID
-            }
+            },
+            order: ["createdAt", "DESC"]
         });
         if (res == null) {
             return null;
@@ -192,13 +214,16 @@ export class AnonModule extends Module {
         return res.userID;
     }
 
-    public async isBlacklisted(userID: Snowflake): Promise<boolean> {
-        const res: Blacklist | null = await Blacklist.findOne({
+    public async blacklistStatus(userID: Snowflake): Promise<Blacklist | void> {
+        return Blacklist.findOne({
             where: {
                 hashed: AnonModule.getHash(userID)
             }
         });
-        return res != null;
+    }
+
+    public async isBlacklisted(userID: Snowflake): Promise<boolean> {
+        return (await this.blacklistStatus(userID)) != null;
     }
 
     private async blacklistIDExists(blacklistID: string): Promise<boolean> {
@@ -216,26 +241,32 @@ export class AnonModule extends Module {
             .digest('base64');
     }
 
-    private async blacklistUser(userID: Snowflake): Promise<string> {
+    private async blacklistUser(userID: Snowflake, end?: Date): Promise<string> {
         if (await this.isBlacklisted(userID)) {
             throw new Error("SAFE: Target is already blacklisted");
         }
         const blacklistID = generateUID();
+        if (end != null) {
+            await this.scheduler.schedule("anon", end, "ANON_TIMEOUT_END", blacklistID);
+        }
         await Blacklist.create({
             blacklistID: blacklistID,
-            hashed: AnonModule.getHash(userID)
+            hashed: AnonModule.getHash(userID),
+            end: end
         });
         return blacklistID;
     }
 
-    public async unblacklist(blacklistID: string, mod: User) {
+    public async unblacklist(blacklistID: string, mod?: User) {
         if (!(await this.blacklistIDExists(blacklistID))) {
             throw new Error("SAFE: ID not found")
         }
         await Blacklist.destroy({
             where: {blacklistID}
         });
-        await this.audit.unblacklist(mod, blacklistID);
+        if (mod != null) {
+            await this.audit.unblacklist(mod, blacklistID);
+        }
     }
 
     public newAlias(anonUser: AnonUser): void {
@@ -254,12 +285,18 @@ export class AnonModule extends Module {
         anonUser.setColor(randomColor());
     }
 
-    public async doBlacklist(messageID: Snowflake, mod: User): Promise<BlacklistResponse> {
+    public async doBlacklist(messageID: Snowflake, mod: User, timeoutInterval?: number):
+        Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
+        const end = new Date(new Date().getTime() + timeoutInterval * 1000);
         if (record instanceof Record) {
-            const blacklistID = await this.blacklistUser(record.userID);
+            const blacklistID = await this.blacklistUser(record.userID, end);
             this.deleteAnonUserByID(record.userID);
-            await this.audit.blacklist(mod, blacklistID, record);
+            if (end != null) {
+                await this.audit.timeout(mod, blacklistID, record, timeoutInterval)
+            } else {
+                await this.audit.blacklist(mod, blacklistID, record);
+            }
             return {
                 blacklistID: blacklistID,
                 anonAlias: record.alias

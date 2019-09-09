@@ -3,6 +3,7 @@ import {Sequelize, Model, DataTypes} from "sequelize";
 export class Blacklist extends Model {
     public blacklistID!: string;
     public hashed!: string;
+    public end: Date | null;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -18,6 +19,9 @@ export function initBlacklist(sequelize: Sequelize): void {
             type: DataTypes.TEXT,
             unique: true,
             allowNull: false
+        },
+        end: {
+            type: DataTypes.DATE
         }
     }, {
         sequelize: sequelize,

@@ -4,6 +4,7 @@ import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
 import {SettingsConfig} from "./settings.skip";
 import {Logs} from "../database/models/logs";
+import {formatInterval} from "../util";
 
 const settingsConfig: SettingsConfig = {
     channel: {
@@ -72,11 +73,21 @@ export class AuditModule extends Module {
 
     public async blacklist(user: User, blacklistID: string, record: Record) {
         const alias: AnonAlias = record.alias;
-        const message: Message = (this.bot.guild.channels.get(record.channelID) as TextChannel)
-            .messages.get(record.messageID);
+        const message: Message = await (this.bot.guild.channels.get(record.channelID) as TextChannel)
+            .messages.fetch(record.messageID);
         return this.log("BLACKLIST", "Anon User Blacklisted", user, `User \
-            ${this.idenUser(user)} blacklisted anon **${alias}** \`(blacklist ID: ${blacklistID}) \
+            ${this.idenUser(user)} blacklisted anon **${alias}** \`(blacklist ID: ${blacklistID})\` \
             because of the following message ${this.idenMessage(message)}:`, message, blacklistID)
+    }
+
+    public async timeout(user: User, blacklistID: string, record: Record, interval: number) {
+        const alias: AnonAlias = record.alias;
+        const message: Message = await (this.bot.guild.channels.get(record.channelID) as TextChannel)
+            .messages.fetch(record.messageID);
+        return this.log("TIMEOUT", "Anon User Timed Out", user, `User \
+            ${this.idenUser(user)} timed out anon **${alias}** \`(blacklist ID: ${blacklistID})\` \
+            for ${formatInterval(interval)} because of the following message \
+            ${this.idenMessage(message)}:`, message, blacklistID)
     }
 
     public async unblacklist(user: User, blacklistID: string) {

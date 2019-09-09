@@ -1,13 +1,13 @@
 import {
     Availability,
-    Command, CommandCategory,
-    CommandConfig,
+    Command,
+    CommandConfig, CommandsModule,
     PartialCommandConfig,
     Permission
 } from "../modules/commands";
 import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {AnonModule, AnonUser} from "../modules/anon";
-import {randomColor} from "../util";
+import {formatInterval, parseInterval, randomColor} from "../util";
 import {Bot} from "../bot";
 
 class RequiresAnon extends Command {
@@ -128,6 +128,33 @@ export class NewID extends RequiresAnon {
             this.anon.setAlias(user, parsed);
         }
         return message.author.send("You are now speaking under ID `" + user.getAlias() + "`");
+    }
+}
+
+export class Timeout extends RequiresAnon {
+    constructor(bot) {
+        super(bot, {
+            names: ["timeout"],
+            usages: {
+                ["Temporarily blacklists the anon of a given message. Returns a unique ID which" +
+                    " can be used to unblacklist the user."]: ["messageId", "duration"]
+            },
+            permission: Permission.UserKick,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message, messageID: string, _: string) {
+        const duration = (this.bot.getModule("commands") as CommandsModule)
+            .getRawContent(message.content, 1);
+        const interval = parseInterval(duration);
+        const resp = await this.anon.doBlacklist(messageID, message.author, interval);
+        return message.reply(
+            new MessageEmbed()
+                .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) \
+                    for ${formatInterval(interval)}`)
+                .setColor(this.bot.displayColor())
+        );
     }
 }
 

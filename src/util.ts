@@ -6,6 +6,41 @@ import {Availability, CommandCategory, CommandsModule, Permission} from "./modul
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 
+const intervalUnits = [
+    {
+        name: "day",
+        shorthands: ["d"],
+        seconds: 86400
+    },
+    {
+        name: "hour",
+        shorthands: ["h", "hr"],
+        seconds: 3600
+    },
+    {
+        name: "minute",
+        shorthands: ["m", "min"],
+        seconds: 60
+    },
+    {
+        name: "second",
+        shorthands: ["s", "sec"],
+        seconds: 1
+    }
+];
+
+const unitMap = new Map<string, number>();
+for (let i = 0; i < intervalUnits.length; i++) {
+    const unit = intervalUnits[i];
+    unitMap.set(unit.name, unit.seconds);
+    unitMap.set(unit.name + "s", unit.seconds);
+    for (let i = 0; i < unit.shorthands.length; i++) {
+        const short = unit.shorthands[i];
+        unitMap.set(short, unit.seconds);
+        unitMap.set(short + "s", unit.seconds);
+    }
+}
+
 // Returns items in the array separated by newlines or the string "_None_" if the array is empty
 export const listOrNone = (arr: string[]): string => {
     return arr.length === 0 ? "_None_" : arr.join("\n");
@@ -38,31 +73,38 @@ export const alphabetical = (arr: string[]): string[] => {
     });
 };
 
+export const parseInterval = (intervalInput: string): number => {
+    const matches = intervalInput.toLowerCase().match(/(\d+)\s?([a-z]+)/);
+    if (matches != null && matches.length > 2) {
+        const num = parseInt(matches[1], 10);
+        if (!isNaN(num)) {
+            const suffix = matches[2];
+            if (unitMap.has(suffix)) {
+                return num * unitMap.get(suffix);
+            }
+        }
+    }
+    throw new Error("SAFE: Invalid interval: interval must be a positive whole number with the" +
+        " following suffixes supported: " + [...unitMap.keys()].join(", "))
+};
+
 // Given an interval in seconds, returns the number of days, hours, minutes, or seconds it
 // is equal to. Note that it will only return one of these, not a combination, and will only return
 // the interval of the largest interval it is _exactly equal to_. For example, 86400 seconds
 // would return 1 day, but 86460 would return 25 hours.
 export const formatInterval = (seconds: number): string => {
-    let value: number;
-    let unit: string;
-    if (seconds % 86400 == 0) {
-        value = seconds / 86400;
-        unit = "day";
-    } else if (seconds % 3600 == 0) {
-        value = seconds / 3600;
-        unit = "hour";
-    } else if (seconds % 60 == 0) {
-        value = seconds / 60;
-        unit = "minute";
-    } else {
-        value = seconds;
-        unit = "second";
+    for (let i = 0; i < intervalUnits.length; i++) {
+        const unit = intervalUnits[i];
+        if (seconds % unit.seconds === 0) {
+            const value = seconds / unit.seconds;
+            if (value === 1) {
+                return `${value} ${unit.name}`;
+            } else {
+                return `${value} ${unit.name}s`;
+            }
+        }
     }
-    if (value === 1) {
-        return value + " " + unit;
-    } else {
-        return value + " " + unit + "s";
-    }
+    throw new Error("Invalid input");
 };
 
 // Returns a cryptographically safe random string that uses hex characters

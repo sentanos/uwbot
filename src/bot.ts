@@ -250,7 +250,7 @@ export class Bot {
 
     // Loads all modules in the modules folder
     public async loadModules(): Promise<number> {
-        const num: number = await this.forEachClassInFile("./modules",
+        const num: number = await Bot.forEachClassInFile("./modules",
                 async (name: string, constructor: any): Promise<boolean> => {
             if (name.endsWith("Module")) {
                 const module: Module = new constructor(this);
@@ -287,16 +287,16 @@ export class Bot {
         return module;
     }
 
-    // Given a location, imports all applicable files and calls func with the name of every
-    // class in the file and the class itself (which can be created with new). func should
-    // return true if the class was created or false if it was not.
+    // Given a location relative to src, imports all applicable files and calls func with the
+    // name of every class in the file and the class itself (which can be created with new). func
+    // should return true if the class was created or false if it was not.
     //
     // If validate is not specified, applicable files are all .js files. Otherwise, whether or
     // not a file is applicable will be determined by the validate function. It is called with
     // the filename. If it returns true, the file will be loaded; otherwise, it will not.
     //
     // Returns the number of classes successfully loaded (determined by the result of func).
-    public async forEachClassInFile(location: string, func: (name: string, aClass: any) =>
+    public static async forEachClassInFile(location: string, func: (name: string, aClass: any) =>
         Promise<boolean>, validate?: (filename: string) => boolean): Promise<number> {
         if (validate == null) {
             validate = (filename: string) => {

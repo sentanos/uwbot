@@ -118,7 +118,7 @@ export class CommandsModule extends Module {
     // means they are a template that should not be loaded but may be used as a dependency for
     // something else
     public async loadCommands(): Promise<number> {
-        return this.bot.forEachClassInFile("./commands",
+        return Bot.forEachClassInFile("./commands",
             (name: string, constructor: any): Promise<boolean> => {
                 this.addCommand(new constructor(this.bot));
                 return Promise.resolve(true);

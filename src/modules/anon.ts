@@ -288,7 +288,8 @@ export class AnonModule extends Module {
     public async doBlacklist(messageID: Snowflake, mod: User, timeoutInterval?: number):
         Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
-        const end = new Date(new Date().getTime() + timeoutInterval * 1000);
+        const end = timeoutInterval == null ? null :
+            new Date(new Date().getTime() + timeoutInterval * 1000);
         if (record instanceof Record) {
             const blacklistID = await this.blacklistUser(record.userID, end);
             this.deleteAnonUserByID(record.userID);

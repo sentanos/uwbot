@@ -265,6 +265,7 @@ export class AnonModule extends Module {
             where: {blacklistID}
         });
         if (mod != null) {
+            await this.scheduler.deleteJobsByContent("ANON_TIMEOUT_END", blacklistID);
             await this.audit.unblacklist(mod, blacklistID);
         }
     }

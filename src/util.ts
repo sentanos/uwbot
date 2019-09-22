@@ -74,7 +74,7 @@ export const alphabetical = (arr: string[]): string[] => {
 };
 
 export const parseInterval = (intervalInput: string): number => {
-    const matches = intervalInput.toLowerCase().match(/(\d+)\s?([a-z]+)/);
+    const matches = intervalInput.toLowerCase().match(/^(\d+)\s?([a-z]+)$/);
     if (matches != null && matches.length > 2) {
         const num = parseInt(matches[1], 10);
         if (!isNaN(num)) {

@@ -173,7 +173,7 @@ export class Blacklist extends RequiresAnon {
 
     async exec(message: Message, messageID: string) {
         const blacklistResponse = await this.anon.doBlacklist(messageID, message.author);
-        return message.reply(
+        return message.channel.send(
             new MessageEmbed()
                 .setDescription(`Blacklisted \`${blacklistResponse.anonAlias}\`. \
                     ID: ${blacklistResponse.blacklistID}`)
@@ -197,7 +197,11 @@ export class Unblacklist extends RequiresAnon {
 
     async exec(message: Message, blacklistID: string) {
         await this.anon.unblacklist(blacklistID, message.author);
-        return message.reply("Unblacklisted");
+        return message.channel.send(
+            new MessageEmbed()
+                .setDescription(`Unblacklisted \`${blacklistID}\``)
+                .setColor(this.bot.displayColor())
+        );
     }
 }
 

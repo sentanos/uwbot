@@ -24,6 +24,21 @@ export class SchedulerModule extends Module {
         }
     }
 
+    // Deletes all jobs with the given event and payload
+    public async deleteJobsByContent(event: string, payload: string): Promise<void> {
+        const jobs = await Jobs.findAll({
+            where: {event, payload}
+        });
+        for (let i = 0; i < jobs.length; i++) {
+            const id = jobs[i].id;
+            this.jobs.get(id).stop();
+            this.jobs.delete(id);
+        }
+        await Jobs.destroy({
+            where: {event, payload}
+        });
+    }
+
     private async loadJobs(): Promise<void> {
         let jobs = await Jobs.findAll();
         for (let i = 0; i < jobs.length; i++) {

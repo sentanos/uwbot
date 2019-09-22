@@ -8,7 +8,7 @@ export class XpLogs extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initXpLogs(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     XpLogs.init({
         userID: {
             type: DataTypes.STRING,

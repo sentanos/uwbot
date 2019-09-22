@@ -1,18 +1,13 @@
 import {Sequelize} from "sequelize";
-import {initBlacklist} from "./models/blacklist";
-import {initXpLogs} from "./models/xpLogs";
-import {initXp} from "./models/xp";
-import {initPins} from "./models/pins";
-import {initLogs} from "./models/logs";
-import {initSettings} from "./models/setting";
-import {initJobs} from "./models/job";
+import {Bot} from "../bot";
 
-export default function (sequelize: Sequelize): void {
-    initBlacklist(sequelize);
-    initLogs(sequelize);
-    initPins(sequelize);
-    initXp(sequelize);
-    initXpLogs(sequelize);
-    initSettings(sequelize);
-    initJobs(sequelize);
+export default (sequelize: Sequelize): Promise<number> => {
+    return Bot.forEachClassInFile("./database/models",
+        async (name: string, init: any): Promise<boolean> => {
+            if (name === "init") {
+                init(sequelize);
+                return true;
+            }
+            return false;
+        });
 }

@@ -11,7 +11,7 @@ export class Jobs extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initJobs(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     Jobs.init({
         id: {
             type: DataTypes.INTEGER,

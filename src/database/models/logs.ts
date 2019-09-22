@@ -10,7 +10,7 @@ export class Logs extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initLogs(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     Logs.init({
         userID: {
             type: DataTypes.STRING,

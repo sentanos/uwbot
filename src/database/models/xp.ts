@@ -12,7 +12,7 @@ export class Xp extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initXp(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     Xp.init({
         userID: {
             type: DataTypes.STRING,

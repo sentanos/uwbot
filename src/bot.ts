@@ -43,13 +43,14 @@ export class Bot {
 
     // Prepares the bot for use asynchronously
     public async initialize(): Promise<void> {
-        initializeDB(this.DB);
+        const models = await initializeDB(this.DB);
         await this.DB.sync();
         const settingsMod: SettingsModule = new SettingsModule(this);
         this.addModule(settingsMod);
         await this.load(settingsMod);
         this.settings = settingsMod;
         const num = await this.loadModules();
+        console.log("Initialized " + models + " models");
         console.log("Found " + num + " modules");
     }
 

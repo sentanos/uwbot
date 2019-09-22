@@ -9,7 +9,7 @@ export class Setting extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initSettings(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     Setting.init({
         key: {
             type: DataTypes.STRING,

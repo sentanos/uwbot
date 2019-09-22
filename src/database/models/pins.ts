@@ -9,7 +9,7 @@ export class Pins extends Model {
     public readonly updatedAt!: Date;
 }
 
-export function initPins(sequelize: Sequelize): void {
+export function init(sequelize: Sequelize): void {
     Pins.init({
         messageID: {
             type: DataTypes.STRING,

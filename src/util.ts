@@ -29,6 +29,12 @@ const intervalUnits = [
     }
 ];
 
+// A map of a unit name or shorthand to the number of seconds that unit represents
+// The units added are:
+//   - All names above
+//   - All shorthands above
+//   - All names above with an "s" appended (eg. seconds)
+//   - All shorthands above with an "s" appended (eg. mins)
 const unitMap = new Map<string, number>();
 for (let i = 0; i < intervalUnits.length; i++) {
     const unit = intervalUnits[i];

@@ -149,7 +149,7 @@ export class Timeout extends RequiresAnon {
             .getRawContent(message.content, 1);
         const interval = parseInterval(duration);
         const resp = await this.anon.doBlacklist(messageID, message.author, interval);
-        return message.reply(
+        return message.channel.send(
             new MessageEmbed()
                 .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) \
                     for ${formatInterval(interval)}`)

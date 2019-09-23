@@ -94,23 +94,32 @@ export const parseInterval = (intervalInput: string): number => {
         " following suffixes supported: " + [...unitMap.keys()].join(", "))
 };
 
-// Given an interval in seconds, returns the number of days, hours, minutes, or seconds it
-// is equal to. Note that it will only return one of these, not a combination, and will only return
-// the interval of the largest interval it is _exactly equal to_. For example, 86400 seconds
-// would return 1 day, but 86460 would return 25 hours.
+// Given an interval in seconds, returns the number of days, hours, minutes, and seconds it
+// is equal to.
+//
+// Units are included largest to smallest, plural if more than 1, delimited by commas, and the last
+// unit is separated by "and". Units are only included if they are not 0.
+//
+// For example, 86401 seconds would be formatted as "1 day and 1 second" and 5410 seconds would
+// be formatted as "1 hour, 30 minutes, and 10 seconds"
 export const formatInterval = (seconds: number): string => {
+    let parts: string[] = [];
     for (let i = 0; i < intervalUnits.length; i++) {
         const unit = intervalUnits[i];
-        if (seconds % unit.seconds === 0) {
-            const value = seconds / unit.seconds;
-            if (value === 1) {
-                return `${value} ${unit.name}`;
-            } else {
-                return `${value} ${unit.name}s`;
-            }
+        const div = Math.floor(seconds / unit.seconds);
+        if (div !== 0) {
+            parts.push(`${div} ${unit.name}${div > 1 ? "s" : ""}`);
+            seconds -= div * unit.seconds;
         }
     }
-    throw new Error("Invalid input");
+    if (parts.length === 0) {
+        throw new Error("Invalid input");
+    } else if (parts.length === 1) {
+        return parts[0];
+    } else {
+        const last = parts.pop();
+        return `${parts.join(", ")}${parts.length > 2 ? "," : ""} and ${last}`;
+    }
 };
 
 // Returns a cryptographically safe random string that uses hex characters

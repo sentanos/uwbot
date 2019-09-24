@@ -30,7 +30,8 @@ if (filterPath == null) {
 
     const sequelize: Sequelize = new Sequelize({
         dialect: 'sqlite',
-        storage: databasePath
+        storage: databasePath,
+        logging: process.env.NODE_ENV === "production" ? false : console.log
     });
 
     client.once("ready", async () => {

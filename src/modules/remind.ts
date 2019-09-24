@@ -35,11 +35,12 @@ export class RemindModule extends Module {
             }));
     }
 
-    private async sendReminder(user: User, reminder: string): Promise<void> {
+    private async sendReminder(user: User, reminder: string, permalink: string): Promise<void> {
         try {
             await user.send(new MessageEmbed()
                 .setTitle("Reminder")
-                .setDescription(`This is your reminder for: ${reminder}`)
+                .setDescription(`This is your reminder for: ${reminder}\n\n\
+                [Jump to reminder](${permalink})`)
                 .setColor(this.bot.displayColor())
             )
         } catch (err) {
@@ -55,7 +56,7 @@ export class RemindModule extends Module {
                 context: "DM" | "GUILD", channelID: Snowflake} =
                 JSON.parse(payload);
             let jobs: Promise<void>[] = [];
-            let user;
+            let user: User;
             try {
                 user = await this.bot.client.users.fetch(reminder.authorID);
             } catch (err) {
@@ -63,18 +64,22 @@ export class RemindModule extends Module {
                     throw err;
                 }
             }
-            jobs.push(this.sendReminder(user, reminder.content));
-            if (reminder.context !== "DM") {
-                const message = await (this.bot.guild.channels.get(reminder.channelID) as TextChannel)
+            let message: Message;
+            if (reminder.context === "DM") {
+                message = await (await user.createDM()).messages.fetch(reminder.reminderMessageID);
+            } else {
+                message = await (this.bot.guild.channels.get(reminder.channelID) as TextChannel)
                     .messages.fetch(reminder.reminderMessageID);
-                if (message.reactions.has(this.settings("emoji"))) {
-                    const targets = (await message.reactions.get(this.settings("emoji"))
-                        .users.fetch()).array();
-                    for (let i = 0; i < targets.length; i++) {
-                        if (targets[i].id !== this.bot.client.user.id
-                            && targets[i].id !== reminder.authorID) {
-                            jobs.push(this.sendReminder(targets[i], reminder.content));
-                        }
+            }
+            jobs.push(this.sendReminder(user, reminder.content, message.url));
+            if (reminder.context !== "DM"
+                && message.reactions.has(this.settings("emoji"))) {
+                const targets = (await message.reactions.get(this.settings("emoji"))
+                    .users.fetch()).array();
+                for (let i = 0; i < targets.length; i++) {
+                    if (targets[i].id !== this.bot.client.user.id
+                        && targets[i].id !== reminder.authorID) {
+                        jobs.push(this.sendReminder(targets[i], reminder.content, message.url));
                     }
                 }
             }

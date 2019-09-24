@@ -33,6 +33,7 @@ export type CommandCategory =
     | "xp"
     | "modules"
     | "settings"
+    | "remind"
 
 export type PartialCommandConfig = {
     names: string[],

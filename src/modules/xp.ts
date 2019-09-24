@@ -2,8 +2,7 @@ import {
     GuildMember,
     Message, PartialTextBasedChannelFields,
     MessageEmbed,
-    Snowflake,
-    User
+    Snowflake
 } from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";

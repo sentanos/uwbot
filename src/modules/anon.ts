@@ -8,7 +8,15 @@ import {
     DMChannel
 } from "discord.js"
 import {createHash} from "crypto";
-import {generateUID, random, randomColor, Queue, formatInterval, timeDiff} from "../util";
+import {
+    generateUID,
+    random,
+    randomColor,
+    Queue,
+    formatInterval,
+    timeDiff,
+    dateAfterSeconds
+} from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {CommandsModule} from "./commands";
@@ -289,8 +297,7 @@ export class AnonModule extends Module {
     public async doBlacklist(messageID: Snowflake, mod: User, timeoutInterval?: number):
         Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
-        const end = timeoutInterval == null ? null :
-            new Date(new Date().getTime() + timeoutInterval * 1000);
+        const end = timeoutInterval == null ? null : dateAfterSeconds(timeoutInterval);
         if (record instanceof Record) {
             const blacklistID = await this.blacklistUser(record.userID, end);
             this.deleteAnonUserByID(record.userID);

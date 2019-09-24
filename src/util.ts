@@ -66,6 +66,11 @@ export const generateUID = (): string => {
     return uuid();
 };
 
+// Returns the date in the future by the given number of seconds
+export const dateAfterSeconds = (seconds: number): Date => {
+    return new Date(new Date().getTime() + seconds * 1000);
+};
+
 // Returns the given array sorted in alphabetical order (a-z)
 export const alphabetical = (arr: string[]): string[] => {
     return arr.sort((a: string, b: string): number => {

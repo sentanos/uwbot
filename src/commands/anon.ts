@@ -7,7 +7,7 @@ import {
 } from "../modules/commands";
 import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {AnonModule, AnonUser} from "../modules/anon";
-import {formatInterval, parseInterval, randomColor} from "../util";
+import {dateAfterSeconds, formatInterval, parseInterval, randomColor} from "../util";
 import {Bot} from "../bot";
 
 class RequiresAnon extends Command {
@@ -153,6 +153,8 @@ export class Timeout extends RequiresAnon {
             new MessageEmbed()
                 .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) \
                     for ${formatInterval(interval)}`)
+                .setFooter("Timeout ends")
+                .setTimestamp(dateAfterSeconds(interval))
                 .setColor(this.bot.displayColor())
         );
     }

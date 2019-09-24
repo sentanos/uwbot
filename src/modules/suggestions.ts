@@ -3,7 +3,7 @@ import {SettingsConfig} from "./settings.skip";
 import {GuildMember, Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {SchedulerModule} from "./scheduler";
 import {Bot} from "../bot";
-import {listOrNone} from "../util";
+import {dateAfterSeconds, listOrNone} from "../util";
 
 const settingsConfig: SettingsConfig = {
     channel: {
@@ -157,7 +157,7 @@ export class SuggestionsModule extends Module {
             || message.channel.id !== this.settings("channel")) {
             return;
         }
-        const end = new Date(new Date().getTime() + (this.settingsN("voteInterval") * 1000));
+        const end = dateAfterSeconds(this.settingsN("voteInterval"));
         const voting: Message = await message.channel.send(new MessageEmbed()
             .setDescription("Vote here for the above suggestion")
             .setFooter(`Voting will end on ${end.toLocaleString('en-US', 

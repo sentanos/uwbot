@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js",
+    "start": "NODE_ENV=production node src/index.js",
     "build": "babel src -d src --extensions \".ts\"",
     "type-check": "tsc --downlevelIteration src/index.ts src/commands/*.ts src/modules/*.ts --noEmit"
   },
@@ -13,7 +13,7 @@
   "dependencies": {
     "cron": "^1.7.1",
     "discord.js": "github:discordjs/discord.js",
-    "sequelize": "^5.16.0",
+    "sequelize": "^5.19.0",
     "sqlite3": "^4.1.0",
     "uuid": "^3.3.3"
   },

@@ -294,11 +294,13 @@ export class XPModule extends Module {
         if (rewardCheckUsers.length > 0) {
             for (let i = 0; i < rewardCheckUsers.length; i++) {
                 const userID: Snowflake = rewardCheckUsers[i];
-                let user: User;
                 try {
-                    user = await this.bot.client.users.fetch(userID);
+                    let user = await this.bot.client.users.fetch(userID);
                     rewardChecks.push(this.updateReward(userID, null, user));
                 } catch (err) {
+                    if (err.message !== "Unknown User") {
+                        throw err;
+                    }
                 }
             }
             await Promise.all(rewardChecks);

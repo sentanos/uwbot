@@ -182,7 +182,7 @@ export class XPModule extends Module {
     }
 
     public async top(num: number, offset: number): Promise<{userID: Snowflake, totalXp: XP}[]> {
-        return await Xp.findAll({
+        return Xp.findAll({
             order: [["totalXp", "DESC"]],
             limit: num,
             offset: offset

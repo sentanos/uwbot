@@ -90,7 +90,7 @@ export class UserSettingsSet extends RequiresUserSettings {
             usages: {
                 "Set the value of a user setting": ["setting", "value"],
             },
-            permission: Permission.UserKick,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -122,7 +122,7 @@ export class UserSettingsSet extends RequiresUserSettings {
             usages: {
                 "Clears the value of a setting": ["setting"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }

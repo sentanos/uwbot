@@ -5,6 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "NODE_ENV=production node src/index.js",
+    "dev": "node src/index.js",
     "build": "babel src -d src --extensions \".ts\"",
     "type-check": "tsc --downlevelIteration src/index.ts src/commands/*.ts src/modules/*.ts --noEmit"
   },

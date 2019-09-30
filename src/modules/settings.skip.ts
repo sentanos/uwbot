@@ -80,6 +80,12 @@ export class SettingsModule extends Module {
     //     return namespaces;
     // }
 
+    public persistentGetInNamespace(namespace: string): Promise<Setting[]> {
+        return Setting.findAll({
+            where: { namespace }
+        });
+    }
+
     public getInNamespace(namespace: string): LocalSetting[] {
         let settings: LocalSetting[] = [];
         for (const key of this.cache.keys()) {
@@ -136,6 +142,10 @@ export class SettingsModule extends Module {
 
     public static getNamespace(key: string): string {
         return key.substring(0, key.indexOf("."));
+    }
+
+    public static getKeyWithoutNamespace(key: string): string {
+        return key.substring(key.indexOf(".") + 1);
     }
 
     public async persistentGet(key: string): Promise<Setting | void> {

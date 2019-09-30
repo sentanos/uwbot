@@ -63,7 +63,7 @@ export class SettingsModule extends Module {
     public getNamespaces(): string[] {
         const namespaces: Set<string> = new Set<string>();
         for (const key of this.cache.keys()) {
-            namespaces.add(SettingsModule.getNamespace(key))
+            namespaces.add(SettingsModule.getNamespace(key));
         }
         return [...namespaces];
     };

@@ -26,6 +26,7 @@ import {SettingsConfig} from "./settings.skip";
 import {Logs} from "../database/models/logs";
 import {Op} from "sequelize";
 import {SchedulerModule} from "./scheduler";
+import {UserSettingsModule} from "./usersettings";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -137,9 +138,10 @@ export class AnonModule extends Module {
     private messageRecords: MessageRecords;
     private audit: AuditModule;
     private scheduler: SchedulerModule;
+    private usettings: UserSettingsModule;
 
     constructor(bot: Bot) {
-        super(bot, "anon", ["audit", "scheduler"], settingsConfig);
+        super(bot, "anon", ["audit", "scheduler", "usersettings"], settingsConfig);
         this.guild = this.bot.guild;
         this.filter = this.bot.filter;
     }
@@ -150,6 +152,7 @@ export class AnonModule extends Module {
             this.settingsN("lifetime"));
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
+        this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
         await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
             .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
                 " I'm open source, check out my source code" +
@@ -200,7 +203,12 @@ export class AnonModule extends Module {
                 throw new Error("SAFE: You are blacklisted")
             }
         }
-        this.users.set(user.id, new AnonUser(this, user, this.randomFreeAlias()));
+        const disable = (await this.usettings.get(user.id, "anon.disablemessages")) === "true";
+        this.users.set(user.id, new AnonUser(this, user, this.randomFreeAlias(), disable));
+    }
+
+    public async setDisableMessages(user: User, disabled: boolean): Promise<void> {
+        (await this.getAnonUser(user)).disableMessages = disabled;
     }
 
     public async blacklistedBy(blacklistID: string): Promise<Snowflake | void> {
@@ -359,13 +367,13 @@ export class AnonModule extends Module {
         return this.messageRecords.getLastRecord(channel)
     }
 
-    public async sendAnonMessage(channelOpt: string | TextChannel | DMChannel, message: Message,
+    public async sendAnonMessage(targetOpt: string | TextChannel | AnonUser, message: Message,
                                  offset: number = 0) {
-        let channel: TextChannel | DMChannel;
-        if (typeof channelOpt === "string") {
-            channel = this.bot.getChannelByName(channelOpt)
+        let target: TextChannel | AnonUser;
+        if (typeof targetOpt === "string") {
+            target = this.bot.getChannelByName(targetOpt)
         } else {
-            channel = channelOpt;
+            target = targetOpt;
         }
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         const content: string = handler.getRawContent(message.content, offset);
@@ -375,8 +383,7 @@ export class AnonModule extends Module {
                 throw new Error("Filtered words")
             }
         }
-        return (await this.getAnonUser(message.author)).send(
-            channel, content)
+        return (await this.getAnonUser(message.author)).send(target, content)
     }
 }
 
@@ -384,13 +391,15 @@ export class AnonUser {
     readonly user: User;
     private anon: AnonModule;
     // public anonID: AnonID;
+    public disableMessages: boolean;
     private anonAlias: AnonAlias;
     private color: number;
 
-    constructor(anon: AnonModule, user: User, anonAlias: AnonAlias) {
+    constructor(anon: AnonModule, user: User, anonAlias: AnonAlias, disableMessages: boolean) {
         this.anon = anon;
         this.user = user;
         this.anonAlias = anonAlias;
+        this.disableMessages = disableMessages;
         // this.anonID = generateUID();
         this.color = randomColor();
     }
@@ -418,7 +427,16 @@ export class AnonUser {
             // .setFooter(this.anonID)
     }
 
-    public async send(channel: TextChannel | DMChannel, content: string) {
+    public async send(target: TextChannel | AnonUser, content: string) {
+        let channel: TextChannel | DMChannel;
+        if (target instanceof AnonUser) {
+            if (target.disableMessages) {
+                return;
+            }
+            channel = target.user.dmChannel || await target.user.createDM();
+        } else {
+            channel = target;
+        }
         const lastMessage: Message = (await channel.messages.fetch({limit: 1})).first();
         const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
         if (lastRecord instanceof Record

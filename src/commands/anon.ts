@@ -95,8 +95,7 @@ export class MessageCommand extends RequiresAnon {
         }
         const anonUser: AnonUser | void = this.anon.getAnonUserByAlias(id);
         if (anonUser instanceof AnonUser) {
-            return this.anon.sendAnonMessage(anonUser.user.dmChannel ||
-                await anonUser.user.createDM(), message, 1);
+            return this.anon.sendAnonMessage(anonUser, message, 1);
         } else {
             throw new Error("SAFE: User not found");
         }

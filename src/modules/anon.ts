@@ -127,6 +127,10 @@ const settingsConfig: SettingsConfig = {
     maxInactiveRecords: {
         description: "The maximum number of inactive message records that are kept",
         default: "1000"
+    },
+    cooldown: {
+        description: "The cooldown (in seconds) between ID changes",
+        default: "0"
     }
 };
 
@@ -392,6 +396,7 @@ export class AnonUser {
     private anon: AnonModule;
     // public anonID: AnonID;
     public disableMessages: boolean;
+    private lastIDChange: Date;
     private anonAlias: AnonAlias;
     private color: number;
 
@@ -413,7 +418,16 @@ export class AnonUser {
     }
 
     public setAlias(alias: AnonAlias): void{
+        const cooldown: number = this.anon.settingsN("cooldown");
+        if (cooldown !== 0 && this.lastIDChange != null) {
+            const diff: number = timeDiff(new Date(), this.lastIDChange) / 1000;
+            if (diff < cooldown) {
+                throw new Error("SAFE: Cooldown: You cannot set a new ID for another " +
+                    formatInterval(cooldown - diff))
+            }
+        }
         this.anonAlias = alias;
+        this.lastIDChange = new Date();
     }
 
     private buildMessage(content: string, prevContent?: string): MessageEmbed {

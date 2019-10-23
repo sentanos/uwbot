@@ -3,6 +3,7 @@ import {Bot} from "../bot";
 import {SchedulerModule} from "./scheduler";
 import {Message, MessageEmbed, Snowflake, TextChannel, User} from "discord.js";
 import {SettingsConfig} from "./settings.skip";
+import {dateAfterSeconds, formatInterval} from "../util";
 
 const settingsConfig: SettingsConfig = {
     emoji: {
@@ -24,7 +25,6 @@ export class RemindModule extends Module {
 
     public async schedule(authorID: Snowflake, content: string, triggerDate: Date,
                           reminderMessage: Message): Promise<void> {
-        await reminderMessage.react(this.settings("emoji"));
         await this.scheduler.schedule("remind", triggerDate, "REMIND_TRIGGER",
             JSON.stringify({
                 authorID: authorID,
@@ -33,6 +33,21 @@ export class RemindModule extends Module {
                 context: reminderMessage.channel.type === "dm" ? "DM" : "GUILD",
                 channelID: reminderMessage.channel.id
             }));
+    }
+
+    public async createReminder(commandMessage: Message, content: string, interval: number):
+        Promise<void> {
+        const triggerDate = dateAfterSeconds(interval);
+        const reminder = await commandMessage.channel.send(new MessageEmbed()
+            .setTitle("Reminder Set")
+            .setDescription(`I will remind you of "${content}" in ${formatInterval(interval)}.\
+            React to this message with ${this.settings("emoji")} to also get this reminder.`)
+            .setFooter("Reminder set for")
+            .setTimestamp(triggerDate)
+            .setColor(this.bot.displayColor())
+        );
+        await reminder.react(this.settings("emoji"));
+        await this.schedule(commandMessage.author.id, content, triggerDate, reminder);
     }
 
     private async sendReminder(user: User, reminder: string, permalink: string): Promise<void> {

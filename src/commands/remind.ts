@@ -41,15 +41,6 @@ export class RemindMe extends RequiresRemind {
         const content = (this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content, 1);
         const interval = parseInterval(input);
-        const triggerDate = dateAfterSeconds(interval);
-        const reminder = await message.channel.send(new MessageEmbed()
-            .setTitle("Reminder Set")
-            .setDescription(`I will remind you of "${content}" in ${formatInterval(interval)}.\
-            React to this message to also get this reminder.`)
-            .setFooter("Reminder set for")
-            .setTimestamp(triggerDate)
-            .setColor(this.bot.displayColor())
-        );
-        await this.remind.schedule(message.author.id, content, triggerDate, reminder);
+        await this.remind.createReminder(message, content, interval);
     }
 }

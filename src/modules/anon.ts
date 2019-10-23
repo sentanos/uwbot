@@ -131,6 +131,10 @@ const settingsConfig: SettingsConfig = {
     cooldown: {
         description: "The cooldown (in seconds) between ID changes",
         default: "0"
+    },
+    mutedRole: {
+        description: "If a user has this role ID they will not be able to use anon",
+        optional: true
     }
 };
 
@@ -410,6 +414,7 @@ export class AnonUser {
     }
 
     public setColor(color: number): void {
+        this.checkMuted();
         this.color = color;
     }
 
@@ -418,6 +423,7 @@ export class AnonUser {
     }
 
     public setAlias(alias: AnonAlias): void{
+        this.checkMuted();
         const cooldown: number = this.anon.settingsN("cooldown");
         if (cooldown !== 0 && this.lastIDChange != null) {
             const diff: number = timeDiff(new Date(), this.lastIDChange) / 1000;
@@ -441,7 +447,15 @@ export class AnonUser {
             // .setFooter(this.anonID)
     }
 
+    private checkMuted() {
+        if (this.anon.settingsHas("mutedRole")
+            && this.anon.guild.member(this.user).roles.has(this.anon.settings("mutedRole"))) {
+            throw new Error("SAFE: You cannot use anon while muted");
+        }
+    }
+
     public async send(target: TextChannel | AnonUser, content: string) {
+        this.checkMuted();
         let channel: TextChannel | DMChannel;
         if (target instanceof AnonUser) {
             if (target.disableMessages) {

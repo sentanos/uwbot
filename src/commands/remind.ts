@@ -19,7 +19,7 @@ class RequiresRemind extends Command {
         super(bot, withCategory);
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.remind = this.bot.getModule("remind") as RemindModule;
         return super.run(message, ...args);
     }
@@ -37,10 +37,10 @@ export class RemindMe extends RequiresRemind {
         });
     }
 
-    async exec(message: Message, input: string, _: string) {
+    async exec(message: Message, input: string, _: string): Promise<Message> {
         const content = (this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content, 1);
         const interval = parseInterval(input);
-        await this.remind.createReminder(message, content, interval);
+        return await this.remind.createReminder(message, content, interval);
     }
 }

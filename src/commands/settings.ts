@@ -19,7 +19,7 @@ class RequiresSettings extends Command {
         super(bot, withCategory);
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.settings = this.bot.getModule("settings") as SettingsModule;
         return super.run(message, ...args);
     }
@@ -38,7 +38,7 @@ export class Settings extends RequiresSettings {
         });
     }
 
-    async exec(message: Message, namespace?: string) {
+    async exec(message: Message, namespace?: string): Promise<Message> {
         if (namespace == null) {
             const namespaces: string[] = this.settings.getNamespaces();
             return message.channel.send(new MessageEmbed()
@@ -80,7 +80,7 @@ export class SettingsGet extends RequiresSettings {
         });
     }
 
-    async exec(message: Message, key: string) {
+    async exec(message: Message, key: string): Promise<Message> {
         if (!this.settings.exists(key)) {
             throw new Error("SAFE: Setting does not exist");
         }
@@ -104,7 +104,7 @@ export class SettingsSet extends RequiresSettings {
         });
     }
 
-    async exec(message: Message, key: string, value: string) {
+    async exec(message: Message, key: string, value: string): Promise<Message> {
         if (value === "") {
             throw new Error("SAFE: You must specify a value");
         }
@@ -129,7 +129,7 @@ export class SettingsClear extends RequiresSettings {
         });
     }
 
-    async exec(message: Message, key: string) {
+    async exec(message: Message, key: string): Promise<Message> {
         const setting = this.settings.getSetting(key);
         if (!setting.optional) {
             throw new Error("SAFE: You may only clear the value of an optional setting");

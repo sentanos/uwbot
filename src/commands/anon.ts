@@ -19,7 +19,7 @@ class RequiresAnon extends Command {
         super(bot, withCategory);
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.anon = this.bot.getModule("anon") as AnonModule;
         return super.run(message, ...args);
     }
@@ -54,14 +54,14 @@ export class MessageCommand extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, alias: string) {
+    async exec(message: Message, alias: string): Promise<void> {
         const id: number = parseInt(alias, 10);
         if (isNaN(id)) {
             throw new Error("SAFE: ID must be a number")
         }
         const anonUser: AnonUser | void = this.anon.getAnonUserByAlias(id);
         if (anonUser instanceof AnonUser) {
-            return this.anon.sendAnonMessage(anonUser, message, 1);
+            await this.anon.sendAnonMessage(anonUser, message, 1);
         } else {
             throw new Error("SAFE: User not found");
         }
@@ -81,7 +81,7 @@ export class NewID extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, customID?: string) {
+    async exec(message: Message, customID?: string): Promise<void> {
         const user = await this.anon.getAnonUser(message.author);
         if (customID == null) {
             this.anon.newAlias(user);
@@ -92,7 +92,7 @@ export class NewID extends RequiresAnon {
             }
             this.anon.setAlias(user, parsed);
         }
-        return message.author.send("You are now speaking under ID `" + user.getAlias() + "`");
+        await message.author.send("You are now speaking under ID `" + user.getAlias() + "`");
     }
 }
 
@@ -109,7 +109,7 @@ export class Timeout extends RequiresAnon {
         });
     }
 
-    async exec(message: Message, messageID: string, _: string) {
+    async exec(message: Message, messageID: string, _: string): Promise<Message> {
         const duration = (this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content, 1);
         const interval = parseInterval(duration);
@@ -138,7 +138,7 @@ export class Blacklist extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, messageID: string) {
+    async exec(message: Message, messageID: string): Promise<Message> {
         const blacklistResponse = await this.anon.doBlacklist(messageID, message.author);
         return message.channel.send(
             new MessageEmbed()
@@ -162,7 +162,7 @@ export class Unblacklist extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, blacklistID: string) {
+    async exec(message: Message, blacklistID: string): Promise<Message> {
         await this.anon.unblacklist(blacklistID, message.author);
         return message.channel.send(
             new MessageEmbed()
@@ -184,7 +184,7 @@ export class BlacklistedBy extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, blacklistID: string) {
+    async exec(message: Message, blacklistID: string): Promise<Message> {
         const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
         if (typeof id === "string") {
             const member = await this.anon.guild.members.fetch(id);
@@ -211,7 +211,7 @@ export class Reset extends RequiresAnon {
         })
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         this.anon.reset();
         return message.reply("Reset all IDs")
     }
@@ -231,7 +231,7 @@ export class SetColor extends RequiresAnon {
         })
     }
 
-    async exec(message: Message, color?: string, g?: string, b?: string) {
+    async exec(message: Message, color?: string, g?: string, b?: string): Promise<Message> {
         const anonUser: AnonUser = await this.anon.getAnonUser(message.author);
         let colorDecimal: number;
         if (color == null) {

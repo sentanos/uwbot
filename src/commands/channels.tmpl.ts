@@ -25,7 +25,7 @@ class ChannelCommand extends Command {
         this.parentModule = parentModule;
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.bot.getModule(this.parentModule);
         return super.run(message, ...args);
     }
@@ -37,7 +37,7 @@ export class ChannelGetCommand extends ChannelCommand {
         super(bot, parentModule, channels, config, listName, []);
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         const ids: Snowflake[] = await this.channels.getChannels();
         let channels: string[] = [];
         for (let i = 0; i < ids.length; i++) {
@@ -61,7 +61,7 @@ export class ChannelAddCommand extends ChannelCommand {
         super(bot, parentModule, channels, config, listName, ["channelID"]);
     }
 
-    async exec(message: Message, channel: string) {
+    async exec(message: Message, channel: string): Promise<Message> {
         if (!this.bot.guild.channels.has(channel)) {
             throw new Error("SAFE: Channel does not exist. Make sure to use the channel ID, NOT" +
                 " the channel name.");
@@ -78,7 +78,7 @@ export class ChannelRemoveCommand extends ChannelCommand {
         super(bot, parentModule, channels, config, listName, ["channelID"]);
     }
 
-    async exec(message: Message, channel: string) {
+    async exec(message: Message, channel: string): Promise<Message> {
         await this.channels.remove(channel);
         return message.channel.send("Removed channel from " + this.listName)
     }

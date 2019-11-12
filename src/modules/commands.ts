@@ -290,10 +290,10 @@ export abstract class Command {
     }
 
     // exec is the raw source of the command, and does not perform any checks
-    async exec(message?: Message, ...args: string[]): Promise<any> {}
+    async exec(message?: Message, ...args: string[]): Promise<Message | void> {}
 
     // run runs the command and performs all command-related checks
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
 
         let resolved : GuildMember | void;

@@ -21,7 +21,7 @@ export class Ping extends Command {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         return message.channel.send("pong");
     }
 }
@@ -40,7 +40,7 @@ export class Commands extends Command {
         });
     }
 
-    async exec(message: Message, category?: string) {
+    async exec(message: Message, category?: string): Promise<Message> {
         const embed: MessageEmbed = new MessageEmbed();
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         if (category == null) {
@@ -78,9 +78,9 @@ export class Commands extends Command {
         }
         embed.setColor(this.bot.displayColor());
         if (message.guild != null) {
-            return Promise.all([message.author.send(embed), message.delete()]);
+            return (await Promise.all([message.author.send(embed), message.delete()]))[0];
         } else {
-            return message.author.send(embed);
+            return await message.author.send(embed);
         }
     }
 }
@@ -98,7 +98,7 @@ export class GetCommand extends Command {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         const embed: MessageEmbed = new MessageEmbed();
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         const search = handler.getRawContent(message.content);
@@ -111,9 +111,9 @@ export class GetCommand extends Command {
             .setDescription(command.toString())
             .setColor(this.bot.displayColor());
         if (message.guild != null) {
-            return Promise.all([message.author.send(embed), message.delete()]);
+            return (await Promise.all([message.author.send(embed), message.delete()]))[0];
         } else {
-            return message.author.send(embed);
+            return await message.author.send(embed);
         }
     }
 }
@@ -131,7 +131,7 @@ export class Source extends Command {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         return message.channel.send(new MessageEmbed()
             .setDescription("My source code is [here](https://github.com/sentanos/uwbot). I" +
                 " welcome contributions from anyone!")

@@ -20,7 +20,7 @@ class RequiresUserSettings extends Command {
         super(bot, withCategory);
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
         return super.run(message, ...args);
     }
@@ -38,7 +38,7 @@ export class UserSettings extends RequiresUserSettings {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         const settings: LocalSetting[] = await this.usettings.getAll(message.author.id);
         const embed: MessageEmbed = new MessageEmbed()
             .setTitle("User Settings")
@@ -71,7 +71,7 @@ export class UserSettingsGet extends RequiresUserSettings {
         });
     }
 
-    async exec(message: Message, key: string) {
+    async exec(message: Message, key: string): Promise<Message> {
         if (AllSettings[key] == null) {
             throw new Error("SAFE: Setting does not exist");
         }
@@ -95,7 +95,7 @@ export class UserSettingsSet extends RequiresUserSettings {
         });
     }
 
-    async exec(message: Message, key: string, value: string) {
+    async exec(message: Message, key: string, value: string): Promise<Message> {
         if (AllSettings[key] == null) {
             throw new Error("SAFE: Setting does not exist");
         }
@@ -127,7 +127,7 @@ export class UserSettingsSet extends RequiresUserSettings {
         });
     }
 
-    async exec(message: Message, key: string) {
+    async exec(message: Message, key: string): Promise<Message> {
         if (AllSettings[key] == null) {
             throw new Error("SAFE: Setting does not exist");
         }

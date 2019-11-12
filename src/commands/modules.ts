@@ -16,7 +16,7 @@ export class Modules extends Command {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         let required = [];
         let enabled = [];
         let disabled = [];
@@ -63,7 +63,7 @@ export class ModulesEnable extends Command {
         });
     }
 
-    async exec(message: Message, moduleName: string) {
+    async exec(message: Message, moduleName: string): Promise<Message> {
         let module: Module | void = this.bot.modules[moduleName];
         if (module instanceof Module) {
             await this.bot.enable(module);
@@ -88,7 +88,7 @@ export class ModulesDisable extends Command {
         });
     }
 
-    async exec(message: Message, moduleName: string) {
+    async exec(message: Message, moduleName: string): Promise<Message> {
         let module: Module | void = this.bot.modules[moduleName];
         if (module instanceof Module) {
             await this.bot.disable(module);
@@ -113,7 +113,7 @@ export class ModulesReload extends Command {
         });
     }
 
-    async exec(message: Message, moduleName: string) {
+    async exec(message: Message, moduleName: string): Promise<Message> {
         let module: Module | void = this.bot.modules[moduleName];
         if (module instanceof Module) {
             await this.bot.reload(module);

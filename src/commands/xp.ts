@@ -18,7 +18,7 @@ class RequiresXP extends Command {
         super(bot, withCategory);
     }
 
-    async run(message?: Message, ...args: string[]): Promise<any> {
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
         this.xp = this.bot.getModule("xp") as XPModule;
         return super.run(message, ...args);
     }
@@ -37,7 +37,7 @@ export class XPCommand extends RequiresXP {
         });
     }
 
-    async exec(message: Message, person?: string) {
+    async exec(message: Message, person?: string): Promise<Message> {
         const embed: MessageEmbed = new MessageEmbed();
         let user: User;
         if (person != null) {
@@ -69,7 +69,7 @@ export class XPLeaderboard extends RequiresXP {
         });
     }
 
-    async exec(message: Message, page?: string) {
+    async exec(message: Message, page?: string): Promise<Message> {
         const pageSize = 10;
         let pageNum: number;
         if (page != null) {
@@ -123,7 +123,7 @@ export class XPUpdateAll extends RequiresXP {
         });
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<Message> {
         // await message.channel.startTyping();
         await this.xp.updateAll();
         // message.channel.stopTyping(true);

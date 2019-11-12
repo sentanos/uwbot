@@ -1,7 +1,7 @@
 import {GuildMember, Message} from "discord.js";
 import {Bot} from "../bot";
 import {Module} from "../module";
-import {getNthIndex} from "../util";
+import {CaseInsensitiveTernaryTrie, getNthIndex} from "../util";
 import {WhitelistModule} from "./whitelist";
 import {SettingsConfig} from "./settings.skip";
 
@@ -95,14 +95,15 @@ const settingsConfig: SettingsConfig = {
 };
 
 export class CommandsModule extends Module {
-    // An array of all commands
-    public readonly commands: Command[];
+    // Map all command names to commands, including aliases
+    public readonly commands: Map<string, Command>;
+    private commandTrie: CaseInsensitiveTernaryTrie;
     private whitelist: WhitelistModule;
     private whitelistEnabled: boolean;
 
     constructor(bot: Bot) {
         super(bot, "commands", ["?whitelist"], settingsConfig, true);
-        this.commands = [];
+        this.commands = new Map<string, Command>();
     }
 
     public async initialize() {
@@ -112,6 +113,7 @@ export class CommandsModule extends Module {
             this.whitelist = this.bot.getModule("whitelist") as WhitelistModule;
         }
         const num: number = await this.loadCommands();
+        this.commandTrie = new CaseInsensitiveTernaryTrie([...this.commands.keys()]);
         console.log("Loaded " + num + " commands");
     }
 
@@ -129,7 +131,14 @@ export class CommandsModule extends Module {
 
     // Adds the given command, making it available for use
     public addCommand(command: Command): void {
-        this.commands.push(command);
+        const trieInsert: boolean = this.commandTrie != null;
+        for (let i = 0; i < command.names.length; i++) {
+            const alias = command.names[i];
+            this.commands.set(alias, command);
+            if (trieInsert) {
+                this.commandTrie.add(alias);
+            }
+        }
     }
 
     // Find the command specified in content
@@ -138,25 +147,14 @@ export class CommandsModule extends Module {
     // the one used in content
     public findCommand(content: string):
         CommandAndAlias | void {
-        let found: boolean = false;
-        let res: CommandAndAlias;
-        for (let i = 0; i < this.commands.length; i++) {
-            const command = this.commands[i];
-            for (let j = 0; j < command.names.length; j++) {
-                const name = command.names[j];
-                if (content.toLowerCase() === name
-                    || (content.toLowerCase().startsWith(name + this.settings("separator")))) {
-                    if (!found || name.length > res.alias.length) {
-                        found = true;
-                        res = {command: command, alias: name};
-                    }
-                }
-            }
-        }
-        if (!found) {
+        let match = this.commandTrie.longestCommonPrefix(content);
+        if (match.length === 0) {
             return null;
         }
-        return res;
+        return {
+            alias: match,
+            command: this.commands.get(match)
+        }
     }
 
     // Given a GuildMember _of the bot guild_, checks if they have the given permission. Returns

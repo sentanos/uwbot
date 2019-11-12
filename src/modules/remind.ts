@@ -36,7 +36,7 @@ export class RemindModule extends Module {
     }
 
     public async createReminder(commandMessage: Message, content: string, interval: number):
-        Promise<void> {
+        Promise<Message> {
         const triggerDate = dateAfterSeconds(interval);
         const reminder = await commandMessage.channel.send(new MessageEmbed()
             .setTitle("Reminder Set")
@@ -48,6 +48,7 @@ export class RemindModule extends Module {
         );
         await reminder.react(this.settings("emoji"));
         await this.schedule(commandMessage.author.id, content, triggerDate, reminder);
+        return reminder;
     }
 
     private async sendReminder(user: User, reminder: string, permalink: string): Promise<void> {

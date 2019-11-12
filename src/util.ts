@@ -1,6 +1,6 @@
 import {randomBytes} from "crypto";
 import uuid from "uuid/v4";
-import {Sequelize, Model, BuildOptions, DataTypes} from "sequelize";
+import {BuildOptions, DataTypes, Model, Sequelize} from "sequelize";
 import {Snowflake} from "discord.js";
 import {Availability, CommandCategory, CommandsModule, Permission} from "./modules/commands";
 import {Bot} from "./bot";
@@ -155,6 +155,22 @@ export const getNthIndex = (str: string, substr: string, n: number): number => {
     }
 
     return i;
+};
+
+// Fisher-Yates Shuffle
+// From https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
+export const shuffle = (array) => {
+    let currentIndex = array.length;
+    let temporaryValue, randomIndex;
+
+    while (0 !== currentIndex) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+
+        temporaryValue = array[currentIndex];
+        array[currentIndex] = array[randomIndex];
+        array[randomIndex] = temporaryValue;
+    }
 };
 
 export class Queue<T> {
@@ -316,3 +332,115 @@ export class PersistentChannelList {
         this.cache.delete(channel);
     }
 }
+
+export interface Trie {
+    has(string): boolean;
+    hasPrefix(string): boolean;
+    longestCommonPrefix(string): string;
+}
+
+class TrieNode {
+    public letter: string;
+    public before: TrieNode;
+    public after: TrieNode;
+    public next: TrieNode;
+    public isKey: boolean;
+
+    constructor(letter: string) {
+        if (letter.length > 1) {
+            throw new Error("Letter must be of length 1");
+        }
+        this.isKey = false;
+        this.letter = letter;
+    }
+}
+
+export class CaseInsensitiveTernaryTrie implements Trie {
+    private root: TrieNode;
+
+    constructor(words: string[]) {
+        // Randomizing the insertion order helps avoid a worst case tree
+        shuffle(words);
+        for (let i = 0; i < words.length; i++) {
+            this.add(words[i]);
+        }
+    }
+
+    private addNode(current: TrieNode, remaining: string): TrieNode {
+        if (remaining.length === 0) {
+            return;
+        }
+        if (current == null) {
+            current = new TrieNode(remaining.charAt(0));
+        }
+        const first = remaining.charAt(0);
+        const compare = first.localeCompare(current.letter);
+        if (compare < 0) {
+            current.before = this.addNode(current.before, remaining);
+        } else if (compare > 0) {
+            current.after = this.addNode(current.after, remaining);
+        } else {
+            if (remaining.length === 1) {
+                current.isKey = true;
+            } else {
+                current.next = this.addNode(current.next, remaining.substring(1));
+            }
+        }
+        return current;
+    }
+
+    public add(word: string) {
+        this.root = this.addNode(this.root, word.toLowerCase());
+    }
+
+    public has(word: string): boolean {
+        word = word.toLowerCase();
+        let current = this.root;
+        while (current != null) {
+            const first = word.charAt(0);
+            const compare = first.localeCompare(current.letter);
+            if (compare < 0) {
+                current = current.before;
+            } else if (compare > 0) {
+                current = current.after;
+            } else {
+                if (word.length === 1) {
+                    return current.isKey;
+                } else {
+                    current = current.next;
+                    word = word.substring(1);
+                }
+            }
+        }
+        return false;
+    }
+
+    public hasPrefix(word: string): boolean {
+        return this.longestCommonPrefix(word) !== "";
+    }
+
+    public longestCommonPrefix(word: string): string {
+        word = word.toLowerCase();
+        let current = this.root;
+        let longest = "";
+        let build = "";
+        while (current != null) {
+            const first = word.charAt(0);
+            const compare = first.localeCompare(current.letter);
+            if (compare < 0) {
+                current = current.before;
+            } else if (compare > 0) {
+                current = current.after;
+            } else {
+                build += first;
+                if (current.isKey) {
+                    longest = build;
+                }
+                current = current.next;
+                word = word.substring(1);
+            }
+        }
+        return longest;
+    }
+}
+

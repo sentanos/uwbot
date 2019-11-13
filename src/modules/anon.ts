@@ -27,6 +27,7 @@ import {Logs} from "../database/models/logs";
 import {Op} from "sequelize";
 import {SchedulerModule} from "./scheduler";
 import {UserSettingsModule} from "./usersettings";
+import {StreamModule} from "./stream";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -363,12 +364,25 @@ export class AnonModule extends Module {
         return null;
     }
 
-    public onAnonMessage(anonUser: AnonUser, message: Message) {
-        this.messageRecords.addMessage(anonUser, message)
+    private updateStream(userID: Snowflake, message: Message): void {
+        if (message.channel.type === "text"
+            && this.bot.isEnabled("stream")) {
+            (this.bot.getModule("stream") as StreamModule).broadcast(message,
+                new Set<Snowflake>([userID]))
+                .catch((err) => {
+                    console.error("Broadcast anon message error: " + err.stack);
+                })
+        }
     }
 
-    public static onAnonUpdate(lastRecord: Record, message: Message) {
+    public onAnonMessage(anonUser: AnonUser, message: Message) {
+        this.messageRecords.addMessage(anonUser, message);
+        this.updateStream(anonUser.user.id, message);
+    }
+
+    public onAnonUpdate(lastRecord: Record, message: Message) {
         lastRecord.setTime(message.createdAt);
+        this.updateStream(lastRecord.userID, message);
     }
 
     public getLastRecord(channel: Snowflake): Record | void {
@@ -473,7 +487,7 @@ export class AnonUser {
             && lastMessage.embeds[0].title === this.getAlias().toString()
             && lastMessage.embeds[0].color === this.color) {
             const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
-            AnonModule.onAnonUpdate(lastRecord, message);
+            this.anon.onAnonUpdate(lastRecord, message);
             return
         }
         const message = await channel.send(this.buildMessage(content)) as Message;

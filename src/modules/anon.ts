@@ -364,10 +364,10 @@ export class AnonModule extends Module {
         return null;
     }
 
-    private updateStream(userID: Snowflake, message: Message): void {
+    private updateStream(userID: Snowflake, message: Message, delta: MessageEmbed): void {
         if (message.channel.type === "text"
             && this.bot.isEnabled("stream")) {
-            (this.bot.getModule("stream") as StreamModule).broadcast(message,
+            (this.bot.getModule("stream") as StreamModule).broadcast(delta,
                 new Set<Snowflake>([userID]))
                 .catch((err) => {
                     console.error("Broadcast anon message error: " + err.stack);
@@ -375,14 +375,14 @@ export class AnonModule extends Module {
         }
     }
 
-    public onAnonMessage(anonUser: AnonUser, message: Message) {
+    public onAnonMessage(anonUser: AnonUser, message: Message, delta: MessageEmbed) {
         this.messageRecords.addMessage(anonUser, message);
-        this.updateStream(anonUser.user.id, message);
+        this.updateStream(anonUser.user.id, message, delta);
     }
 
-    public onAnonUpdate(lastRecord: Record, message: Message) {
+    public onAnonUpdate(lastRecord: Record, message: Message, delta: MessageEmbed) {
         lastRecord.setTime(message.createdAt);
-        this.updateStream(lastRecord.userID, message);
+        this.updateStream(lastRecord.userID, message, delta);
     }
 
     public getLastRecord(channel: Snowflake): Record | void {
@@ -450,12 +450,12 @@ export class AnonUser {
         this.lastIDChange = new Date();
     }
 
-    private buildMessage(content: string, prevContent?: string): MessageEmbed {
+    private buildMessage(title: string, content: string, prevContent?: string): MessageEmbed {
         if (prevContent != null) {
             content = prevContent + "\n" + content;
         }
         return new MessageEmbed()
-            .setTitle(this.anonAlias)
+            .setTitle(title)
             .setDescription(content)
             .setColor(this.color)
             // .setFooter(this.anonID)
@@ -479,18 +479,25 @@ export class AnonUser {
         } else {
             channel = target;
         }
+        let title: string = this.anonAlias.toString();
+        if (target instanceof AnonUser) {
+            title += " (Private Message)";
+        }
         const lastMessage: Message = (await channel.messages.fetch({limit: 1})).first();
         const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
         if (lastRecord instanceof Record
             && lastRecord.messageID === lastMessage.id
             && lastRecord.userID === this.user.id
-            && lastMessage.embeds[0].title === this.getAlias().toString()
+            && (lastMessage.embeds[0].title === this.getAlias().toString()
+                || lastMessage.embeds[0].title === this.getAlias().toString() + " (Private" +
+                " Message)")
             && lastMessage.embeds[0].color === this.color) {
-            const message = await lastMessage.edit(this.buildMessage(content, lastMessage.embeds[0].description));
-            this.anon.onAnonUpdate(lastRecord, message);
+            const message = await lastMessage.edit(this.buildMessage(title, content,
+                lastMessage.embeds[0].description));
+            this.anon.onAnonUpdate(lastRecord, message, this.buildMessage(title, content));
             return
         }
-        const message = await channel.send(this.buildMessage(content)) as Message;
-        this.anon.onAnonMessage(this, message);
+        const message = await channel.send(this.buildMessage(title, content)) as Message;
+        this.anon.onAnonMessage(this, message, this.buildMessage(title, content));
     }
 }

@@ -376,7 +376,7 @@ export class AnonModule extends Module {
     }
 
     public async sendAnonMessage(targetOpt: string | TextChannel | AnonUser, message: Message,
-                                 offset: number = 0) {
+                                 offset: number = 1) {
         let target: TextChannel | AnonUser;
         if (typeof targetOpt === "string") {
             target = this.bot.getChannelByName(targetOpt)
@@ -384,7 +384,7 @@ export class AnonModule extends Module {
             target = targetOpt;
         }
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
-        const content: string = handler.getRawContent(message.content, offset);
+        const content: string = handler.getRawContent(message.content, offset - 1);
         const cleaned: string = content.toLowerCase().replace(/[^a-z]/g, "");
         for (let i = 0; i < this.filter.length; i++) {
             if (cleaned.includes(this.filter[i])) {

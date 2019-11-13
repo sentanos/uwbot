@@ -61,7 +61,7 @@ export class MessageCommand extends RequiresAnon {
         }
         const anonUser: AnonUser | void = this.anon.getAnonUserByAlias(id);
         if (anonUser instanceof AnonUser) {
-            await this.anon.sendAnonMessage(anonUser, message, 1);
+            await this.anon.sendAnonMessage(anonUser, message, 2);
         } else {
             throw new Error("SAFE: User not found");
         }

@@ -226,9 +226,14 @@ export class CommandsModule extends Module {
     // Given a message with a command, returns the raw content that comes after the message with
     // the given offset of separators.
     //
+    // If offsetIndex < 0, returns content.
+    //
     // For example: if the prefix is > and the separator is a space then ">message 123 hello world"
     // and an offset index of 1 will return "hello world"
     public getRawContent(content: string, offsetIndex: number = 0): string {
+        if (offsetIndex < 0) {
+            return content;
+        }
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
             this.settings("prefix").length));
         if (maybe == null) {

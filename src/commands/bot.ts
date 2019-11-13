@@ -50,8 +50,8 @@ export class Commands extends Command {
                 categories.add(command.category);
             });
             embed.setDescription(alphabetical([...categories]).join("\n"));
-            embed.setFooter(`Use ${handler.settings("prefix")}cmds${handler.settings("separator")} \
-            <category> to get commands in a category`);
+            embed.setFooter(`Use ${handler.settings("prefix")}cmds`
+                + `${handler.settings("separator")}<category> to get commands in a category`);
         } else {
             let commands = [];
             handler.commands.forEach((command: Command) => {

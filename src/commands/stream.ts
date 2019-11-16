@@ -45,8 +45,7 @@ export class StreamCommand extends RequiresStream {
                 ["Enables anonymous message streaming mode to the anonymous channel. In streaming" +
                     " mode, every message you send to the bot (excluding commands) will" +
                     " automatically be sent as an anonymous message. All messages sent in the" +
-                    " anonymous channel will be sent through bot DMs as well. To end streaming" +
-                    " mode use the command >stream end"]: [],
+                    " anonymous channel will be sent through bot DMs as well."]: [],
                 "Enables streaming mode for a specific channel": ["channel"]
             },
             permission: Permission.VerifiedGuildMember,
@@ -59,7 +58,8 @@ export class StreamCommand extends RequiresStream {
             channel = "anonymous"
         }
         if (!this.stream.settingsArr("streamableChannels").includes(channel)) {
-            throw new Error("SAFE: The given channel can not be streamed");
+            throw new Error("SAFE: The given channel can not be streamed. Make sure to use the" +
+                " full channel name.");
         }
         return this.activateStream(message, {
             user: message.author,
@@ -74,7 +74,7 @@ export class StreamMessageCommand extends RequiresStream {
         super(bot, {
             names: ["stream message"],
             usages: {
-                "Enables streaming mode for private messaging an anonymous user": ["user"]
+                "Enables streaming mode for private messaging an anonymous user (see stream)": ["user"]
             },
             permission: Permission.VerifiedGuildMember,
             availability: Availability.ChatOnly

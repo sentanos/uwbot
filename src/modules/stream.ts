@@ -1,7 +1,6 @@
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {
-    Channel,
     DMChannel,
     GuildChannel,
     Message,

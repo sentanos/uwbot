@@ -159,7 +159,7 @@ export const getNthIndex = (str: string, substr: string, n: number): number => {
 
 // Fisher-Yates Shuffle
 // From https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
-export const shuffle = (array) => {
+export const shuffle = (array: any[]): void => {
     let currentIndex = array.length;
     let temporaryValue, randomIndex;
 

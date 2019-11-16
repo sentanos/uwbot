@@ -1,6 +1,7 @@
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {
+    Channel,
     DMChannel,
     GuildChannel,
     Message,
@@ -8,19 +9,34 @@ import {
     Snowflake,
     User
 } from "discord.js";
-import {AnonModule} from "./anon";
+import {AnonAlias, AnonModule, AnonUser} from "./anon";
 import {CommandsModule} from "./commands";
+import {sendAndMerge} from "../util";
+import {SettingsConfig} from "./settings.skip";
+
+export type StreamData = {
+    user: User,
+    type: "channel" | "message",
+    target: string | AnonAlias
+}
+
+const settingsConfig: SettingsConfig = {
+    streamableChannels: {
+        description: "A comma separated list of channel _names_ that can be streamed.",
+        default: "anonymous"
+    }
+};
 
 export class StreamModule extends Module {
     private anon: AnonModule;
     private commands: CommandsModule;
-    private readonly streamers: Map<Snowflake, User>;
+    private readonly streamers: Map<Snowflake, StreamData>;
     // Map of user ID to the last stream message sent to that user
     private readonly lastMessageCache: Map<Snowflake, Snowflake>;
 
     constructor(bot: Bot) {
-        super(bot, "stream", ["anon"]);
-        this.streamers = new Map<Snowflake, User>();
+        super(bot, "stream", ["anon"], settingsConfig);
+        this.streamers = new Map<Snowflake, StreamData>();
         this.lastMessageCache = new Map<Snowflake, Snowflake>();
     }
 
@@ -30,8 +46,8 @@ export class StreamModule extends Module {
         this.listen("message", this.onMessage.bind(this));
     }
 
-    public addStreamer(user: User): void {
-        this.streamers.set(user.id, user);
+    public addStreamer(data: StreamData): void {
+        this.streamers.set(data.user.id, data);
     }
 
     public removeStreamer(user: User): void {
@@ -57,35 +73,24 @@ export class StreamModule extends Module {
             .setColor(this.bot.guild.member(author).displayColor);
     }
 
-    public async updateMessage(original: Message, add: Message | MessageEmbed): Promise<void> {
-        await original.edit(this.buildEmbed(add, original.embeds[0].description));
-    }
-
     private async addMessage(message: Message | MessageEmbed, target: DMChannel): Promise<Message> {
-        if (this.lastMessageCache.has(target.recipient.id)) {
-            const lastMessage: Message = (await target.messages.fetch({limit: 1})).first();
-            if (lastMessage.id === this.lastMessageCache.get(target.recipient.id)
-                && lastMessage.embeds.length > 0
-                && ((message instanceof Message
-                        && lastMessage.embeds[0].author != null
-                        && lastMessage.embeds[0].author.name === message.author.tag)
-                    || (message instanceof MessageEmbed
-                        && message.title === lastMessage.embeds[0].title
-                        && message.color === lastMessage.embeds[0].color))) {
-                await this.updateMessage(lastMessage, message);
-                return lastMessage;
-            }
-        }
-        const last = await target.send(this.buildEmbed(message));
-        this.lastMessageCache.set(target.recipient.id, last.id);
-        return last;
+       const res = await sendAndMerge(target, this.buildEmbed(message), (lastMessage) =>
+            lastMessage.id === this.lastMessageCache.get(target.recipient.id));
+       if (!res.merged) {
+           this.lastMessageCache.set(target.recipient.id, res.message.id);
+       }
+       return res.message;
     }
 
-    public async broadcast(message: Message | MessageEmbed, exclude?: Set<Snowflake>): Promise<void> {
+    public async broadcast(source: GuildChannel, message: Message | MessageEmbed,
+                           exclude?: Set<Snowflake>): Promise<void> {
         let jobs = [];
         for (const [id, streamer] of this.streamers) {
-            if (exclude == null || !exclude.has(id)) {
-                jobs.push(this.addMessage(message, streamer.dmChannel || await streamer.createDM()));
+            if (streamer.type === "channel"
+                && streamer.target === source.name
+                && (exclude == null || !exclude.has(id))) {
+                jobs.push(this.addMessage(message,
+                    streamer.user.dmChannel || await streamer.user.createDM()));
             }
         }
         await Promise.all(jobs);
@@ -94,15 +99,29 @@ export class StreamModule extends Module {
     private async onMessage(message: Message) {
         if (message.guild != null
             && message.guild.id === this.bot.guild.id) {
-            if (((message.channel) as GuildChannel).name === "anonymous"
+            const gc = (message.channel) as GuildChannel;
+            if (this.settingsArr("streamableChannels").includes(gc.name)
                 && message.author.id !== this.bot.client.user.id) {
-                await this.broadcast(message);
+                await this.broadcast(gc, message);
             }
         } else if (this.streamers.has(message.author.id)) {
             const prefix = this.commands.settings("prefix");
+            const streamer = this.streamers.get(message.author.id);
             if (!message.content.startsWith(prefix)
                 || this.commands.findCommand(message.content.substring(prefix.length)) == null) {
-                await this.anon.sendAnonMessage("anonymous", message, 0);
+                if (streamer.type === "channel" && typeof streamer.target === "string") {
+                    await this.anon.sendAnonMessage(streamer.target, message, 0);
+                } else if (streamer.type === "message" && typeof streamer.target === "number") {
+                    const target = this.anon.getAnonUserByAlias(streamer.target);
+                    if (target instanceof AnonUser) {
+                        await this.anon.sendAnonMessage(target, message, 0);
+                    } else {
+                        await message.channel.send("Error: Anon user does not exist. They may" +
+                            " have changed their ID since the stream started.")
+                    }
+                } else {
+                    console.error("Unknown streamer data: " + streamer);
+                }
             }
         }
     }

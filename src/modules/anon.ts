@@ -5,7 +5,7 @@ import {
     Message,
     MessageEmbed,
     TextChannel,
-    DMChannel
+    DMChannel, GuildChannel
 } from "discord.js"
 import {createHash} from "crypto";
 import {
@@ -15,7 +15,7 @@ import {
     Queue,
     formatInterval,
     timeDiff,
-    dateAfterSeconds
+    dateAfterSeconds, sendAndMerge
 } from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
@@ -367,7 +367,8 @@ export class AnonModule extends Module {
     private updateStream(userID: Snowflake, message: Message, delta: MessageEmbed): void {
         if (message.channel.type === "text"
             && this.bot.isEnabled("stream")) {
-            (this.bot.getModule("stream") as StreamModule).broadcast(delta,
+            (this.bot.getModule("stream") as StreamModule).broadcast(
+                message.channel as GuildChannel, delta,
                 new Set<Snowflake>([userID]))
                 .catch((err) => {
                     console.error("Broadcast anon message error: " + err.stack);
@@ -483,21 +484,16 @@ export class AnonUser {
         if (target instanceof AnonUser) {
             title += " (Private Message)";
         }
-        const lastMessage: Message = (await channel.messages.fetch({limit: 1})).first();
-        const lastRecord: Record | void = this.anon.getLastRecord(lastMessage.channel.id);
-        if (lastRecord instanceof Record
-            && lastRecord.messageID === lastMessage.id
-            && lastRecord.userID === this.user.id
-            && (lastMessage.embeds[0].title === this.getAlias().toString()
-                || lastMessage.embeds[0].title === this.getAlias().toString() + " (Private" +
-                " Message)")
-            && lastMessage.embeds[0].color === this.color) {
-            const message = await lastMessage.edit(this.buildMessage(title, content,
-                lastMessage.embeds[0].description));
-            this.anon.onAnonUpdate(lastRecord, message, this.buildMessage(title, content));
-            return
+        const embed = this.buildMessage(title, content);
+        const lastRecord: Record | void = this.anon.getLastRecord(channel.id);
+        const res = await sendAndMerge(channel, embed,
+            (lastMessage) => lastRecord instanceof Record
+                && lastRecord.messageID === lastMessage.id
+                && lastRecord.userID === this.user.id);
+        if (lastRecord instanceof Record && res.merged) {
+            this.anon.onAnonUpdate(lastRecord, res.message, embed);
+        } else {
+            this.anon.onAnonMessage(this, res.message, embed);
         }
-        const message = await channel.send(this.buildMessage(title, content)) as Message;
-        this.anon.onAnonMessage(this, message, this.buildMessage(title, content));
     }
 }

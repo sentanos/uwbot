@@ -1,7 +1,7 @@
 import {randomBytes} from "crypto";
 import uuid from "uuid/v4";
 import {BuildOptions, DataTypes, Model, Sequelize} from "sequelize";
-import {Snowflake} from "discord.js";
+import {DMChannel, Message, MessageEmbed, Snowflake, TextChannel} from "discord.js";
 import {Availability, CommandCategory, CommandsModule, Permission} from "./modules/commands";
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
@@ -171,6 +171,67 @@ export const shuffle = (array: any[]): void => {
         array[currentIndex] = array[randomIndex];
         array[randomIndex] = temporaryValue;
     }
+};
+
+// Check if the embeds are equal excluding fields, files, and description.
+export const embedMetaEquals = (a: MessageEmbed, b: MessageEmbed): boolean =>
+    ((a.author == null && b.author == null)
+    || (a.author != null && b.author != null
+        && a.author.iconURL == b.author.iconURL
+        && a.author.name == b.author.name
+        && a.author.url == b.author.url))
+    && a.color == b.color
+    && ((a.footer == null && b.footer == null)
+    || (a.footer != null && b.footer != null
+        && a.footer.text == b.footer.text
+        && a.footer.iconURL == b.footer.iconURL
+        && a.provider.name == b.provider.name))
+    && ((a.provider == null && b.provider == null)
+    || (a.provider != null && b.provider != null
+        && a.provider.name == b.provider.name
+        && a.provider.url == b.provider.url))
+    && ((a.thumbnail == null && b.thumbnail == null)
+    || (a.thumbnail != null && b.thumbnail != null
+        && a.thumbnail.url == b.thumbnail.url
+        && a.thumbnail.height == b.thumbnail.height
+        && a.thumbnail.width == b.thumbnail.width))
+    && a.title == b.title
+    // && a.type === b.type
+    && a.url == b.url
+    && ((a.video == null && b.video == null)
+    || (a.video.url == b.video.url
+        && a.video.height == b.video.height
+        && a.video.width == b.video.width));
+
+// Send the given embed to the given channel and merge if possible.
+//
+// If the previous message in the channel is an embed where all metadata is the same (everything
+// except description), that message is edited to append the description of the embed.
+//
+// If check is specified, it is called with the lastMessage and its result is used as an
+// additional check for merging. It is guaranteed that check will only be called if an embed
+// exists and passes all metadata checks. If check returns false, the message will not be merged.
+// If it returns true, the message can be merged (if other checks pass as well).
+//
+// Returns the message that was either sent or merged with.
+export const sendAndMerge = async (channel: TextChannel | DMChannel, embed: MessageEmbed,
+                                   check?: (lastMessage: Message) => boolean):
+    Promise<{message: Message, merged: boolean}> => {
+    const lastMessage: Message = (await channel.messages.fetch({limit: 1})).first();
+    if (lastMessage.embeds.length > 0
+        && embedMetaEquals(lastMessage.embeds[0], embed)
+        && (check == null || check(lastMessage))) {
+        const proxy = new MessageEmbed(embed);
+        proxy.setDescription(lastMessage.embeds[0].description + "\n" + embed.description);
+        return {
+            message: await lastMessage.edit(proxy),
+            merged: true
+        };
+    }
+    return {
+        message: await channel.send(embed),
+        merged: false
+    };
 };
 
 export class Queue<T> {

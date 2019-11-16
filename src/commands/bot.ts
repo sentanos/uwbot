@@ -1,12 +1,45 @@
 import {
     Availability,
     Command,
-    CommandAndAlias,
-    CommandsModule,
+    CommandAndAlias, CommandConfig,
+    CommandsModule, PartialCommandConfig,
     Permission
 } from "../modules/commands";
 import {Message, MessageEmbed} from "discord.js";
 import {alphabetical} from "../util";
+import {Bot} from "../bot";
+import {WhitelistModule} from "../modules/whitelist";
+
+class RequiresCommand extends Command {
+    protected handler: CommandsModule;
+
+    constructor(bot: Bot, config: PartialCommandConfig) {
+        let withCategory = config as CommandConfig;
+        withCategory.category = "bot";
+        super(bot, withCategory);
+    }
+
+    async run(message?: Message, ...args: string[]): Promise<Message | void> {
+        this.handler = this.bot.getModule("commands") as CommandsModule;
+        return super.run(message, ...args);
+    }
+
+    async sendCommandsMessage(sourceMessage: Message, newMessage: MessageEmbed):
+        Promise<Message> {
+        if (sourceMessage.guild == null
+            || (
+                this.bot.isEnabled("whitelist")
+                && await (this.bot.getModule("whitelist") as WhitelistModule).
+                    channels.has(sourceMessage.channel.id)
+            )) {
+            return await sourceMessage.channel.send(newMessage);
+        } else {
+            return (await Promise.all([sourceMessage.author.send(newMessage),
+                sourceMessage.delete()]))[0];
+        }
+    }
+}
+
 
 export class Ping extends Command {
     constructor(bot) {
@@ -26,7 +59,7 @@ export class Ping extends Command {
     }
 }
 
-export class Commands extends Command {
+export class Commands extends RequiresCommand {
     constructor(bot) {
         super(bot, {
             names: ["cmds", "commands", "help"],
@@ -35,57 +68,45 @@ export class Commands extends Command {
                 "Get all commands in a specific category": ["category"],
             },
             permission: Permission.None,
-            availability: Availability.All,
-            category: "bot"
+            availability: Availability.All
         });
     }
 
     async exec(message: Message, category?: string): Promise<Message> {
         const embed: MessageEmbed = new MessageEmbed();
-        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         if (category == null) {
             embed.setTitle("Command Categories");
             let categories = new Set<string>();
-            handler.commands.forEach((command: Command) => {
+            this.handler.commands.forEach((command: Command) => {
                 categories.add(command.category);
             });
             embed.setDescription(alphabetical([...categories]).join("\n"));
-            embed.setFooter(`Use ${handler.settings("prefix")}cmds`
-                + `${handler.settings("separator")}<category> to get commands in a category`);
+            embed.setFooter(`Use ${this.handler.settings("prefix")}cmds`
+                + `${this.handler.settings("separator")}<category> to get commands in a category`);
         } else {
-            let commands = [];
-            handler.commands.forEach((command: Command) => {
+            let primaryNames = new Set<string>();
+            this.handler.commands.forEach((command: Command) => {
                 if (command.category === category) {
-                    commands.push(command);
+                    primaryNames.add(command.names[0]);
                 }
             });
-            if (commands.length === 0) {
+            if (primaryNames.size === 0) {
                 throw new Error("SAFE: Category not found");
             }
-            commands.sort((a: Command, b: Command): number => {
-                if (a.names[0] < b.names[0]) {
-                    return -1;
-                } else if (a.names[0] > b.names[0]) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            });
-            commands.forEach((command: Command) => {
+            let commands = [...primaryNames.keys()];
+            alphabetical(commands);
+            commands.forEach((name: string) => {
+                const command = this.handler.commands.get(name);
                 embed.addField(command.names.join(", "), command.toString());
             });
             embed.setTitle("Commands > " + category);
         }
         embed.setColor(this.bot.displayColor());
-        if (message.guild != null) {
-            return (await Promise.all([message.author.send(embed), message.delete()]))[0];
-        } else {
-            return await message.author.send(embed);
-        }
+        return this.sendCommandsMessage(message, embed);
     }
 }
 
-export class GetCommand extends Command {
+export class GetCommand extends RequiresCommand {
     constructor(bot) {
         super(bot, {
             names: ["cmd", "command"],
@@ -93,28 +114,21 @@ export class GetCommand extends Command {
                 "Get information about a specific command": ["command"]
             },
             permission: Permission.None,
-            availability: Availability.All,
-            category: "bot"
+            availability: Availability.All
         });
     }
 
     async exec(message: Message): Promise<Message> {
         const embed: MessageEmbed = new MessageEmbed();
-        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
-        const search = handler.getRawContent(message.content);
-        const maybe: CommandAndAlias | void = handler.findCommand(search);
-        if (maybe == null) {
+        const search = this.handler.getRawContent(message.content);
+        if (!this.handler.commands.has(search)) {
             throw new Error("SAFE: Command not found")
         }
-        const command = (maybe as CommandAndAlias).command;
+        const command = this.handler.commands.get(search);
         embed.setTitle(command.names.join(", "))
             .setDescription(command.toString())
             .setColor(this.bot.displayColor());
-        if (message.guild != null) {
-            return (await Promise.all([message.author.send(embed), message.delete()]))[0];
-        } else {
-            return await message.author.send(embed);
-        }
+        return this.sendCommandsMessage(message, embed);
     }
 }
 

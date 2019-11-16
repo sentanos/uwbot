@@ -451,15 +451,11 @@ export class AnonUser {
         this.lastIDChange = new Date();
     }
 
-    private buildMessage(title: string, content: string, prevContent?: string): MessageEmbed {
-        if (prevContent != null) {
-            content = prevContent + "\n" + content;
-        }
+    private buildMessage(title: string, content: string): MessageEmbed {
         return new MessageEmbed()
             .setTitle(title)
             .setDescription(content)
             .setColor(this.color)
-            // .setFooter(this.anonID)
     }
 
     private checkMuted() {

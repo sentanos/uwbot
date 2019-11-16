@@ -54,22 +54,14 @@ export class StreamModule extends Module {
         this.streamers.delete(user.id);
     }
 
-    private buildEmbed(newMessage: Message | MessageEmbed, prevContent?: string): MessageEmbed {
-        let content = "";
+    private buildEmbed(newMessage: Message | MessageEmbed): MessageEmbed {
         if (newMessage instanceof MessageEmbed) {
-            if (prevContent != null) {
-                newMessage.setDescription(prevContent + "\n" + newMessage.description);
-            }
             return newMessage;
         }
-        if (prevContent != null) {
-            content += prevContent + "\n";
-        }
-        content += newMessage.content;
         let author = newMessage.author;
         return new MessageEmbed()
             .setAuthor(author.tag, author.avatarURL())
-            .setDescription(content)
+            .setDescription(newMessage.content)
             .setColor(this.bot.guild.member(author).displayColor);
     }
 

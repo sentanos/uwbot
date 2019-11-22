@@ -37,8 +37,25 @@ export class AnonCommand extends RequiresAnon {
         })
     }
 
-    async exec(message: Message) {
+    async exec(message: Message): Promise<void> {
         return this.anon.sendAnonMessage("anonymous", message);
+    }
+}
+
+export class Serious extends RequiresAnon {
+    constructor(bot) {
+        super(bot, {
+            names: ["serious"],
+            usages: {
+                "Send an anonymous message to the #serious channel": ["message"]
+            },
+            permission: Permission.VerifiedGuildMember,
+            availability: Availability.All
+        })
+    }
+
+    async exec(message: Message): Promise<void> {
+        return this.anon.sendAnonMessage("serious", message);
     }
 }
 

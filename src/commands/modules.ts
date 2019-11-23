@@ -57,7 +57,7 @@ export class ModulesEnable extends Command {
             usages: {
                 "Enable a module": ["module"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly,
             category: "modules"
         });
@@ -82,7 +82,7 @@ export class ModulesDisable extends Command {
             usages: {
                 "Disable a module": ["module"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly,
             category: "modules"
         });
@@ -107,7 +107,7 @@ export class ModulesReload extends Command {
             usages: {
                 "Reload a module and its dependents": ["module"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly,
             category: "modules"
         });

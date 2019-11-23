@@ -56,6 +56,8 @@ export type CommandConfig = {
 export enum Permission {
     // Allowed if the user has kick permissions in the bot guild
     UserKick,
+    // All users with UserKick permission as well as maintainers
+    UserKickOrMaintainer,
     // If a role ID is specified in the "commands.requiredRole" setting, permission is only
     // given to those who are both in the bot guild and have the required role in that guild
     //
@@ -160,6 +162,7 @@ export class CommandsModule extends Module {
     // Given a GuildMember _of the bot guild_, checks if they have the given permission. Returns
     // true if they do and false if they do not.
     public checkPermission(user: GuildMember, permission: Permission): boolean {
+        // noinspection FallThroughInSwitchStatementJS
         switch(permission) {
             case Permission.None:
                 return true;
@@ -169,10 +172,16 @@ export class CommandsModule extends Module {
                 } else {
                     return true;
                 }
+            case Permission.UserKickOrMaintainer:
+                if (user.id === "137543748434395136") {
+                    return true;
+                }
+                // fallthrough
             case Permission.UserKick:
                 return user.hasPermission("KICK_MEMBERS");
+            default:
+                return false;
         }
-        return false;
     };
 
     // Given a message and availability, returns true if the message matches the availability

@@ -99,7 +99,7 @@ export class SettingsSet extends RequiresSettings {
             usages: {
                 "Set the value of a setting": ["setting", "value"],
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }
@@ -124,7 +124,7 @@ export class SettingsClear extends RequiresSettings {
             usages: {
                 "Clears the value of an optional setting": ["setting"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         });
     }

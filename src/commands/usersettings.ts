@@ -34,7 +34,7 @@ export class UserSettings extends RequiresUserSettings {
                 "List user settings": []
             },
             permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.ChatOnly
         });
     }
 
@@ -67,7 +67,7 @@ export class UserSettingsGet extends RequiresUserSettings {
                 "Get the value of a user setting": ["setting"],
             },
             permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.ChatOnly
         });
     }
 
@@ -91,7 +91,7 @@ export class UserSettingsSet extends RequiresUserSettings {
                 "Set the value of a user setting": ["setting", "value"],
             },
             permission: Permission.VerifiedGuildMember,
-            availability: Availability.WhitelistedGuildChannelsOnly
+            availability: Availability.ChatOnly
         });
     }
 

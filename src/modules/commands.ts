@@ -173,7 +173,8 @@ export class CommandsModule extends Module {
                     return true;
                 }
             case Permission.UserKickOrMaintainer:
-                if (user.id === "137543748434395136") {
+                if (this.bot.config.maintainer != null
+                    && user.id === this.bot.config.maintainer) {
                     return true;
                 }
                 // fallthrough

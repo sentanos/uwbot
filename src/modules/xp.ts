@@ -220,7 +220,9 @@ export class XPModule extends Module {
     private async addBlockXP(user: Snowflake, message?: Message) {
         const add = 1;
         let added = false;
-        return this.DB.transaction((t) => {
+        // Types definition is wrong here because it requires a type that cannot be imported
+        // @ts-ignore
+        return this.DB.transaction({type: 'IMMEDIATE'}, (t) => {
             return Xp.findByPk(user, {transaction: t}).then((userXp) => {
                 if (userXp == null) {
                     added = true;

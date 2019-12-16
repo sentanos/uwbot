@@ -9,10 +9,16 @@ import {Module} from "../module";
 import {Bot} from "../bot";
 import {PersistentChannelList, PersistentChannelListConfig, timeDiff} from "../util";
 import {Xp} from "../database/models/xp";
-import {Op, Sequelize} from "sequelize";
+import {Sequelize, Op, FindOptions} from "sequelize";
 import {XpLogs} from "../database/models/xpLogs";
 import {Availability, Permission} from "./commands";
 import {SettingsConfig} from "./settings.skip";
+import {compile} from "vega-lite";
+import {View, parse, loader, Warn} from "vega";
+import {Stream} from "stream";
+import {Canvas} from "canvas";
+
+const XPGraphTemplate = require("../templates/xptime.json");
 
 export type XP = number;
 
@@ -190,6 +196,103 @@ export class XPModule extends Module {
         });
     }
 
+    public async generateHistoryGraph(userID: Snowflake, from?: Date, to?: Date): Promise<Stream> {
+        let template = XPGraphTemplate;
+        let opt: FindOptions = {
+            attributes: [[Sequelize.fn("strftime", "%Y-%m-%d", Sequelize.col("createdAt")), "date"],
+                [Sequelize.fn("sum", Sequelize.col("xp")), "sum"]],
+            group: ["date"],
+            where: {
+                userID: userID
+            },
+            order: Sequelize.literal("date ASC"),
+            raw: true
+        };
+        if (from != null && to != null) {
+            opt.where['createdAt'] = {
+                [Op.and]: {
+                    [Op.gte]: from,
+                    [Op.lte]: to
+                }
+            }
+        } else if (from != null) {
+            opt.where['createdAt'] = {
+                [Op.gte]: from
+            }
+        } else if (to != null) {
+            opt.where['createdAt'] = {
+                [Op.lte]: to
+            }
+        }
+        const values = await XpLogs.findAll(opt) as unknown as {
+            date: Date,
+            sum: number
+        }[];
+
+        let domain = [];
+
+        if (values.length > 0) {
+            domain.push(values[0].date);
+        } else if (from != null) {
+            domain.push(from.toString());
+        } else {
+            domain.push(new Date().toString());
+        }
+        if (to != null) {
+            domain.push(to.toString());
+        } else if (values.length > 0) {
+            domain.push(values[values.length - 1].date);
+        } else {
+            domain.push(new Date().toString());
+        }
+        template.encoding.x.scale.domain = domain;
+
+        let data: {
+            date: Date,
+            sum: number
+        }[] = [];
+
+        let end = new Date(domain[1]);
+        let i = 0;
+        let current: Date = values.length > 0 ? new Date(values[i].date) : null;
+        for (let d = new Date(domain[0]); d <= end; d.setDate(d.getDate() + 1)) {
+            if (current != null
+                && d.getFullYear() === current.getFullYear()
+                && d.getMonth() === current.getMonth()
+                && d.getDate() === current.getDate()) {
+                data.push({
+                    date: current,
+                    sum: values[i].sum
+                });
+                i++;
+                if (i < values.length) {
+                    current = new Date(values[i].date);
+                } else {
+                    current = null;
+                }
+            } else {
+                data.push({
+                    date: new Date(d),
+                    sum: 0
+                });
+            }
+        }
+
+        template.data = {
+            values: data
+        };
+
+        const res = compile(template);
+
+        return ((await new View(parse(res.spec), {
+            loader: loader(),
+            logLevel: Warn,
+            renderer: 'none'
+        })
+        .initialize()
+        .toCanvas()) as unknown as Canvas).createPNGStream();
+    }
+
     public async getXP(user: Snowflake): Promise<XP> {
         const res: Xp = await Xp.findByPk(user);
         if (res == null) {
@@ -217,7 +320,7 @@ export class XPModule extends Module {
         return res;
     }
 
-    private async addBlockXP(user: Snowflake, message?: Message) {
+    private async addBlockXP(user: Snowflake, message?: Message): Promise<boolean | void> {
         const add = 1;
         let added = false;
         // Types definition is wrong here because it requires a type that cannot be imported

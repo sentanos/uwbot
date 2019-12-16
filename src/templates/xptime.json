@@ -1,0 +1,26 @@
+{
+  "mark": "line",
+  "width": 400,
+  "height": 200,
+  "encoding": {
+    "x": {
+      "timeUnit": "yearmonthdate",
+      "field": "date",
+      "type": "temporal",
+      "scale": {
+        "type": "time",
+        "domain": []
+      },
+      "axis": {
+        "title": "Date"
+      }
+    },
+    "y": {
+      "field": "sum",
+      "type": "quantitative",
+      "axis": {
+        "title": "XP Per Day"
+      }
+    }
+  }
+}

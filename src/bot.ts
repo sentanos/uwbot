@@ -88,8 +88,9 @@ export class Bot {
         if (message.mentions.members.size > 0) {
             return message.mentions.members.first().user;
         }
-        const content: string = (this.getModule("commands") as CommandsModule)
-            .getRawContent(overrideContent != null ? overrideContent : message.content);
+        const content: string = overrideContent != null ?
+            overrideContent :
+            (this.getModule("commands") as CommandsModule).getRawContent(message.content);
         const user: User | void = await this.getUser(this.guild, content);
         if (user instanceof User) {
             return user;

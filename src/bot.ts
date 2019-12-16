@@ -84,12 +84,12 @@ export class Bot {
 
     // Returns a user based on their mention/nickname/username/tag/userID
     // Throws an error if no user was found
-    public async getUserFromMessage(message: Message): Promise<User> {
+    public async getUserFromMessage(message: Message, overrideContent?: string): Promise<User> {
         if (message.mentions.members.size > 0) {
             return message.mentions.members.first().user;
         }
         const content: string = (this.getModule("commands") as CommandsModule)
-            .getRawContent(message.content);
+            .getRawContent(overrideContent != null ? overrideContent : message.content);
         const user: User | void = await this.getUser(this.guild, content);
         if (user instanceof User) {
             return user;

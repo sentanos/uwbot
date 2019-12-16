@@ -2,11 +2,31 @@ import {randomBytes} from "crypto";
 import uuid from "uuid/v4";
 import {BuildOptions, DataTypes, Model, Sequelize} from "sequelize";
 import {DMChannel, Message, MessageEmbed, Snowflake, TextChannel} from "discord.js";
-import {Availability, CommandCategory, CommandsModule, Permission} from "./modules/commands";
+import {
+    Availability,
+    CommandCategory,
+    CommandsModule,
+    Permission
+} from "./modules/commands";
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 
 const intervalUnits = [
+    {
+        name: "year",
+        shorthands: ["y"],
+        seconds: 31536000
+    },
+    {
+        name: "month",
+        shorthands: ["mo"],
+        seconds: 2592000
+    },
+    {
+        name: "week",
+        shorthands: ["w", "wk"],
+        seconds:  604800
+    },
     {
         name: "day",
         shorthands: ["d"],
@@ -84,6 +104,100 @@ export const alphabetical = (arr: string[]): string[] => {
     });
 };
 
+// Returns an interval if it can be parsed, or -1 if it cannot be
+const tryInterval = (content: string): number => {
+    try {
+        return parseInterval(content);
+    } catch (e) {
+        return -1;
+    }
+};
+
+export type IntervalResponse = {
+    interval: number,
+    args: string[],
+    offset: number,
+    raw: string
+}
+
+// Extracts time interval from a command and returns the interval, a list of arguments that come
+// before or after it (before if it is at the end, after if it is at the beginning), and the raw
+// content of those arguments.
+// Works when the interval has spaces. Offset is the number of arguments before the time
+// interval can appear. The interval will be found if it is either the first argument after
+// others or the last argument.
+export const smartFindInterval = (bot: Bot, content: string, offset: number = 0):
+    IntervalResponse => {
+    const handler = bot.getModule("commands") as CommandsModule;
+    const after = handler.getRawContent(content, offset);
+    const sep = handler.settings("separator");
+
+    let firstSep = after.indexOf(sep);
+    if (firstSep < 0) {
+        firstSep = after.length;
+    }
+    const beginningNoSpaces = tryInterval(after.substring(0, firstSep));
+    if (beginningNoSpaces > 0) {
+        const raw = after.substring(firstSep + sep.length);
+        return {
+            interval: beginningNoSpaces,
+            args: raw.split(sep),
+            offset: 1,
+            raw: raw
+        }
+    }
+
+    let secondSep = after.indexOf(sep, firstSep + sep.length);
+    if (secondSep < 0) {
+        secondSep = after.length;
+    }
+    const beginningSpaces = tryInterval(after.substring(0, secondSep));
+    if (beginningSpaces > 0) {
+        const raw = after.substring(secondSep + sep.length);
+        return {
+            interval: beginningSpaces,
+            args: raw.split(sep),
+            offset: 2,
+            raw: raw
+        }
+    }
+
+    const lastSep = after.lastIndexOf(sep);
+    if (lastSep >= 0) {
+        const lastNoSpaces = tryInterval(after.substring(lastSep + sep.length));
+        if (lastNoSpaces > 0) {
+            const raw = after.substring(0, lastSep);
+            return {
+                interval: lastNoSpaces,
+                args: raw.split(sep),
+                offset: 0,
+                raw: raw
+            }
+        }
+        const secondLastSep = after.lastIndexOf(sep, lastSep - 1);
+        if (secondLastSep >= 0) {
+            const lastSpaces = tryInterval(after.substring(secondLastSep + sep.length));
+            if (lastSpaces > 0) {
+                const raw = after.substring(0, secondLastSep);
+                return {
+                    interval: lastSpaces,
+                    args: raw.split(sep),
+                    offset: 0,
+                    raw: raw
+                }
+            }
+
+        }
+    }
+
+    parseIntervalErr();
+};
+
+const parseIntervalErr = (): void => {
+    throw new Error("SAFE: Invalid interval: interval must be a positive whole number with the" +
+        " following suffixes supported: " + [...unitMap.keys()].join(", "))
+};
+
 export const parseInterval = (intervalInput: string): number => {
     const matches = intervalInput.toLowerCase().match(/^(\d+)\s?([a-z]+)$/);
     if (matches != null && matches.length > 2) {
@@ -95,8 +209,7 @@ export const parseInterval = (intervalInput: string): number => {
             }
         }
     }
-    throw new Error("SAFE: Invalid interval: interval must be a positive whole number with the" +
-        " following suffixes supported: " + [...unitMap.keys()].join(", "))
+    parseIntervalErr();
 };
 
 // Given an interval in seconds, returns the number of days, hours, minutes, and seconds it

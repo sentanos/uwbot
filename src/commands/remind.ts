@@ -6,9 +6,12 @@ import {
     Permission
 } from "../modules/commands";
 import {Bot} from "../bot";
-import {Message, MessageEmbed} from "discord.js";
+import {Message} from "discord.js";
 import {RemindModule} from "../modules/remind";
-import {dateAfterSeconds, formatInterval, parseInterval} from "../util";
+import {
+    IntervalResponse,
+    smartFindInterval
+} from "../util";
 
 class RequiresRemind extends Command {
     protected remind: RemindModule;
@@ -38,9 +41,7 @@ export class RemindMe extends RequiresRemind {
     }
 
     async exec(message: Message, input: string, _: string): Promise<Message> {
-        const content = (this.bot.getModule("commands") as CommandsModule)
-            .getRawContent(message.content, 1);
-        const interval = parseInterval(input);
-        return await this.remind.createReminder(message, content, interval);
+        const resp: IntervalResponse = smartFindInterval(this.bot, message.content);
+        return await this.remind.createReminder(message, resp.raw, resp.interval);
     }
 }

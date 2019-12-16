@@ -1,14 +1,15 @@
 import {
     GuildMember,
-    Message, PartialTextBasedChannelFields,
+    Message,
     MessageEmbed,
+    PartialTextBasedChannelFields,
     Snowflake
 } from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
 import {PersistentChannelList, PersistentChannelListConfig, timeDiff} from "../util";
 import {Xp} from "../database/models/xp";
-import {Sequelize, Op} from "sequelize";
+import {Op, Sequelize} from "sequelize";
 import {XpLogs} from "../database/models/xpLogs";
 import {Availability, Permission} from "./commands";
 import {SettingsConfig} from "./settings.skip";

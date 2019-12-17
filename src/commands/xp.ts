@@ -144,7 +144,7 @@ export class XPHistory extends RequiresXP {
                 "Get the XP history of a specific user for the given time interval":
                     ["nickname/username/tag/userID", "interval/all"]
             },
-            permission: Permission.UserKick,
+            permission: Permission.VerifiedGuildMember,
             availability: Availability.GuildOnly
         });
     }

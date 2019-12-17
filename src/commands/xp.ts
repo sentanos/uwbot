@@ -6,8 +6,9 @@ import {
     Permission
 } from "../modules/commands";
 import {Bot} from "../bot";
-import {GuildMember, Message, MessageEmbed, Snowflake, User} from "discord.js";
+import {GuildMember, Message, MessageAttachment, MessageEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
+import {formatInterval, IntervalResponse, smartFindInterval, titlecase} from "../util";
 
 class RequiresXP extends Command {
     protected xp: XPModule;
@@ -128,6 +129,63 @@ export class XPUpdateAll extends RequiresXP {
         await this.xp.updateAll();
         // message.channel.stopTyping(true);
         return message.channel.send("Full user update complete");
+    }
+}
+
+export class XPHistory extends RequiresXP {
+    constructor(bot: Bot) {
+        super(bot, {
+            names: ["xph", "xphist", "xp history"],
+            usages: {
+                "Get your XP history for the past year": [],
+                "Get your XP history for the given time interval": ["interval/all"],
+                "Get the XP history of a specific user for the past year":
+                    ["nickname/username/tag/userID"],
+                "Get the XP history of a specific user for the given time interval":
+                    ["nickname/username/tag/userID", "interval/all"]
+            },
+            permission: Permission.UserKick,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message, personOrInterval?: string): Promise<Message> {
+        let user: User;
+        let interval = -1;
+        if (personOrInterval != null) {
+            let resp: IntervalResponse = null;
+            try {
+                resp = smartFindInterval(this.bot, message.content, true);
+            } catch (e) {
+                user = await this.bot.getUserFromMessage(message);
+            }
+            if (resp != null) {
+                interval = resp.interval;
+                if (resp.raw.length > 0) {
+                    user = await this.bot.getUserFromMessage(message, resp.raw)
+                } else {
+                    user = message.author;
+                }
+            }
+        } else {
+            user = message.author;
+        }
+
+        if (interval == -1) {
+            interval = 31536000; // 1 year
+        }
+
+        let from: Date = null;
+        if (interval > 0) {
+            from = new Date(new Date().getTime() - interval * 1000);
+        }
+        const image = await this.xp.generateHistoryGraph(user.id, from, new Date());
+        return message.channel.send(new MessageEmbed()
+            .attachFiles([new MessageAttachment(image, "graph.png")])
+            .setImage("attachment://graph.png")
+            .setTitle(`XP History for ${user.tag}: ` +
+                (interval < 0 ? "All Data" : ("Past " + titlecase(formatInterval(interval)))))
+            .setColor(this.bot.displayColor()));
     }
 }
 

@@ -105,7 +105,11 @@ export const alphabetical = (arr: string[]): string[] => {
 };
 
 // Returns an interval if it can be parsed, or -1 if it cannot be
+// Returns -2 if the interval is "all"
 const tryInterval = (content: string): number => {
+    if (content === "all") {
+        return -2;
+    }
     try {
         return parseInterval(content);
     } catch (e) {
@@ -126,7 +130,8 @@ export type IntervalResponse = {
 // Works when the interval has spaces. Offset is the number of arguments before the time
 // interval can appear. The interval will be found if it is either the first argument after
 // others or the last argument.
-export const smartFindInterval = (bot: Bot, content: string, offset: number = 0):
+// This includes the additional interval "all" which returns an interval value of -2.
+export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean, offset: number = 0):
     IntervalResponse => {
     const handler = bot.getModule("commands") as CommandsModule;
     const after = handler.getRawContent(content, offset);
@@ -137,7 +142,7 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
         firstSep = after.length;
     }
     const beginningNoSpaces = tryInterval(after.substring(0, firstSep));
-    if (beginningNoSpaces > 0) {
+    if (includeAll ? beginningNoSpaces != -1 : beginningNoSpaces > 0) {
         const raw = after.substring(firstSep + sep.length);
         return {
             interval: beginningNoSpaces,
@@ -152,7 +157,7 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
         secondSep = after.length;
     }
     const beginningSpaces = tryInterval(after.substring(0, secondSep));
-    if (beginningSpaces > 0) {
+    if (includeAll ? beginningSpaces != -1 : beginningSpaces > 0) {
         const raw = after.substring(secondSep + sep.length);
         return {
             interval: beginningSpaces,
@@ -165,7 +170,7 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
     const lastSep = after.lastIndexOf(sep);
     if (lastSep >= 0) {
         const lastNoSpaces = tryInterval(after.substring(lastSep + sep.length));
-        if (lastNoSpaces > 0) {
+        if (includeAll ? lastNoSpaces != -1 : lastNoSpaces > 0) {
             const raw = after.substring(0, lastSep);
             return {
                 interval: lastNoSpaces,
@@ -177,7 +182,7 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
         const secondLastSep = after.lastIndexOf(sep, lastSep - 1);
         if (secondLastSep >= 0) {
             const lastSpaces = tryInterval(after.substring(secondLastSep + sep.length));
-            if (lastSpaces > 0) {
+            if (includeAll ? lastSpaces != -1 : lastSpaces > 0) {
                 const raw = after.substring(0, secondLastSep);
                 return {
                     interval: lastSpaces,
@@ -186,7 +191,6 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
                     raw: raw
                 }
             }
-
         }
     }
 
@@ -196,6 +200,15 @@ export const smartFindInterval = (bot: Bot, content: string, offset: number = 0)
 const parseIntervalErr = (): void => {
     throw new Error("SAFE: Invalid interval: interval must be a positive whole number with the" +
         " following suffixes supported: " + [...unitMap.keys()].join(", "))
+};
+
+// Capitalizes the first alphabetic letter
+export const titlecase = (s: string): string => {
+    const idx = s.search('[a-zA-Z]');
+    if (idx < 0) {
+        return s;
+    }
+    return s.substring(0, idx) + s.charAt(idx).toUpperCase() + s.substring(idx + 1);
 };
 
 export const parseInterval = (intervalInput: string): number => {

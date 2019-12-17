@@ -41,7 +41,7 @@ export class RemindMe extends RequiresRemind {
     }
 
     async exec(message: Message, input: string, _: string): Promise<Message> {
-        const resp: IntervalResponse = smartFindInterval(this.bot, message.content);
+        const resp: IntervalResponse = smartFindInterval(this.bot, message.content, false);
         return await this.remind.createReminder(message, resp.raw, resp.interval);
     }
 }

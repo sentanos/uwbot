@@ -382,8 +382,8 @@ export class XPModule extends Module {
             const userXp: Xp = userXps[i];
             const xp: XP = userXp.totalXp;
             if (xp > 0) {
-                const newXp: XP = Math.max(0, xp - this.settingsN("decayXp"));
-                const decay: XP = Math.max(xp * -1, this.settingsN("decayXp") * -1);
+                const newXp: XP = Math.max(0, xp - this.settingsN("decayXP"));
+                const decay: XP = Math.max(xp * -1, this.settingsN("decayXP") * -1);
                 jobs.push(userXp.update({
                     totalXp: newXp,
                     lastDecay: new Date()
@@ -395,7 +395,10 @@ export class XPModule extends Module {
                 rewardCheckUsers.push(userXp.userID);
             }
         }
-        await Promise.all(jobs);
+        await Promise.all(jobs)
+            .catch((err) => {
+                console.error(`Decay error: ${err.stack}`);
+            });
         if (rewardCheckUsers.length > 0) {
             for (let i = 0; i < rewardCheckUsers.length; i++) {
                 const userID: Snowflake = rewardCheckUsers[i];

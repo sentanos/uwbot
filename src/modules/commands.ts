@@ -34,6 +34,7 @@ export type CommandCategory =
     | "modules"
     | "settings"
     | "remind"
+    | "moderation"
 
 export type PartialCommandConfig = {
     names: string[],

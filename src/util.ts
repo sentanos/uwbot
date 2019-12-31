@@ -218,7 +218,11 @@ export const parseInterval = (intervalInput: string): number => {
         if (!isNaN(num)) {
             const suffix = matches[2];
             if (unitMap.has(suffix)) {
-                return num * unitMap.get(suffix);
+                const seconds = num * unitMap.get(suffix);
+                if (!isFinite(seconds) || seconds > 63072000000) {
+                    throw new Error("SAFE: Time interval cannot be over 2000 years")
+                }
+                return seconds;
             }
         }
     }

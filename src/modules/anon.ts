@@ -133,8 +133,9 @@ const settingsConfig: SettingsConfig = {
         description: "The cooldown (in seconds) between ID changes",
         default: "0"
     },
-    mutedRole: {
-        description: "If a user has this role ID they will not be able to use anon",
+    mutedRoles: {
+        description: "A comma-separated list of role IDs. If a user has any of these, they will" +
+            " not be able to use anon",
         optional: true
     }
 };
@@ -459,9 +460,12 @@ export class AnonUser {
     }
 
     private checkMuted() {
-        if (this.anon.settingsHas("mutedRole")
-            && this.anon.guild.member(this.user).roles.has(this.anon.settings("mutedRole"))) {
-            throw new Error("SAFE: You cannot use anon while muted");
+        if (this.anon.settingsHas("mutedRoles")) {
+            this.anon.settingsArr("mutedRoles").forEach((roleID) => {
+                if (this.anon.guild.member(this.user).roles.has(roleID)) {
+                    throw new Error("SAFE: You cannot use anon while muted");
+                }
+            });
         }
     }
 

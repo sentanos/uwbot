@@ -34,7 +34,8 @@ export class ModerationModule extends Module {
         if (role == null) {
             role = await this.bot.guild.roles.create({
                 data: {
-                    name: "UW-Muted"
+                    name: "UW-Muted",
+                    permissions: 0
                 }
             });
         }

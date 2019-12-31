@@ -46,7 +46,8 @@ export class ModerationModule extends Module {
         this.bot.guild.channels.each((channel: GuildChannel) => {
             this.updatePermissions(channel)
                 .catch((err) => {
-                    console.error("MODERATION: Error updating muted role permissions: " + err.stack);
+                    console.error("MODERATION: Error updating muted role permissions for channel " +
+                        `${channel.id}: ${err.stack}`);
                 });
         });
         (await Mutes.findAll()).forEach((mute: Mutes) => {

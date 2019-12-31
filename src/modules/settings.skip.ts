@@ -21,6 +21,8 @@ export type LocalSetting = {
     optional?: boolean
 }
 
+// The settings module is a core module that handles all settings. The module requires manual
+// initialization so it is skipped from automatic loading.
 export class SettingsModule extends Module {
     public cache: Map<string, LocalSetting>;
 

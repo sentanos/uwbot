@@ -3,6 +3,9 @@ import {Bot} from "../bot";
 import {Jobs} from "../database/models/job";
 import {CronJob} from "cron";
 
+// The scheduler module executes events scheduler for certain times. It ensures that events are
+// persisted across restarts and that in the event of the bot being offline at the scheduled
+// time it will be executed as soon as possible when the bot comes back online.
 export class SchedulerModule extends Module {
     private jobs: Map<number, CronJob>;
 

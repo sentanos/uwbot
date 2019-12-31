@@ -26,6 +26,8 @@ const settingsConfig: SettingsConfig = {
     }
 };
 
+// The stream module facilitates streaming messages for anon, which allows users to both send
+// and receive messages to anonymous enabled channels directly through DMs.
 export class StreamModule extends Module {
     private anon: AnonModule;
     private commands: CommandsModule;

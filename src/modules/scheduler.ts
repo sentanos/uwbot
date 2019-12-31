@@ -31,8 +31,10 @@ export class SchedulerModule extends Module {
         });
         for (let i = 0; i < jobs.length; i++) {
             const id = jobs[i].id;
-            this.jobs.get(id).stop();
-            this.jobs.delete(id);
+            if (this.jobs.has(id)) {
+                this.jobs.get(id).stop();
+                this.jobs.delete(id);
+            }
         }
         await Jobs.destroy({
             where: {event, payload}

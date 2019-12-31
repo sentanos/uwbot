@@ -133,8 +133,8 @@ export class Timeout extends RequiresAnon {
         const resp = await this.anon.doBlacklist(messageID, message.author, interval);
         return message.channel.send(
             new MessageEmbed()
-                .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) \
-                    for ${formatInterval(interval)}`)
+                .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) ` +
+                    `for ${formatInterval(interval)}`)
                 .setFooter("Timeout ends")
                 .setTimestamp(dateAfterSeconds(interval))
                 .setColor(this.bot.displayColor())
@@ -159,8 +159,8 @@ export class Blacklist extends RequiresAnon {
         const blacklistResponse = await this.anon.doBlacklist(messageID, message.author);
         return message.channel.send(
             new MessageEmbed()
-                .setDescription(`Blacklisted \`${blacklistResponse.anonAlias}\`. \
-                    ID: ${blacklistResponse.blacklistID}`)
+                .setDescription(`Blacklisted \`${blacklistResponse.anonAlias}\`. ` +
+                    `ID: ${blacklistResponse.blacklistID}`)
                 .setColor(this.bot.displayColor())
         )
     }

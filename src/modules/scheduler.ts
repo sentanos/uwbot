@@ -61,8 +61,9 @@ export class SchedulerModule extends Module {
         if (job.date.getTime() < new Date().getTime()) { // Date is in past
             this.tick(job)
                 .catch((err: Error) => {
-                    console.error(`Immediate execute of job ${job.id} for module ${job.module} with \
-                    event ${job.event} and payload ${job.payload} failed to fire with error: ${err.stack}`)
+                    console.error(`Immediate execute of job ${job.id} for module ${job.module} with ` +
+                        `event ${job.event} and payload ${job.payload} failed to fire with error: `
+                        + err.stack);
                 });
             return;
         }
@@ -73,8 +74,8 @@ export class SchedulerModule extends Module {
         let cron = new CronJob(job.date, function() {
             scheduler.tick(job)
                 .catch((err: Error) => {
-                    console.error(`Cron job ${job.id}} for module ${job.module} with event \
-                    ${job.event} and payload ${job.payload} failed to fire with error: ${err.stack}`);
+                    console.error(`Cron job ${job.id}} for module ${job.module} with event ` +
+                    `${job.event} and payload ${job.payload} failed to fire with error: ${err.stack}`);
                 });
         });
         cron.start();

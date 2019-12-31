@@ -100,8 +100,8 @@ export class XPLeaderboard extends RequiresXP {
             } else {
                 name = (await this.bot.client.users.fetch(row.userID)).tag;
             }
-            users.push(`${!inGuild ? "~~" : ""}${i + 1 + (pageNum - 1) * pageSize}. ${name}: \
-            ${row.totalXp} xp (Level ${XPModule.levelFromXp(row.totalXp)})${!inGuild ? "~~" : ""}`);
+            users.push(`${!inGuild ? "~~" : ""}${i + 1 + (pageNum - 1) * pageSize}. ${name}: ` +
+            `${row.totalXp} xp (Level ${XPModule.levelFromXp(row.totalXp)})${!inGuild ? "~~" : ""}`);
         }
         return message.channel.send(new MessageEmbed()
             .setTitle("XP Leaderboard")

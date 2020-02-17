@@ -43,6 +43,7 @@ export class ModerationModule extends Module {
 
         this.listen("channelCreate", this.channelCreate.bind(this));
         this.listen("guildMemberAdd", this.guildMemberAdd.bind(this));
+        this.listen("message", this.onMessage.bind(this));
         this.bot.guild.channels.each((channel: GuildChannel) => {
             this.updatePermissions(channel)
                 .catch((err) => {
@@ -169,5 +170,11 @@ export class ModerationModule extends Module {
 
     public async guildMemberAdd(member: GuildMember) {
         await this.checkMute(member.user.id);
+    }
+
+    public async onMessage(message: Message) {
+        if (message.guild != null) {
+            await this.checkMute(message.author.id);
+        }
     }
 }

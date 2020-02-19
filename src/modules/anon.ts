@@ -15,7 +15,8 @@ import {
     Queue,
     formatInterval,
     timeDiff,
-    dateAfterSeconds, sendAndMerge
+    dateAfter,
+    sendAndMerge
 } from "../util";
 import {Module} from "../module";
 import {Bot} from "../bot";
@@ -28,6 +29,7 @@ import {Op} from "sequelize";
 import {SchedulerModule} from "./scheduler";
 import {UserSettingsModule} from "./usersettings";
 import {StreamModule} from "./stream";
+import {Duration} from "moment";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -312,15 +314,15 @@ export class AnonModule extends Module {
         anonUser.setColor(randomColor());
     }
 
-    public async doBlacklist(messageID: Snowflake, mod: User, timeoutInterval?: number):
+    public async doBlacklist(messageID: Snowflake, mod: User, timeoutDuration?: Duration):
         Promise<BlacklistResponse> {
         const record: Record | void = this.messageRecords.getRecordByID(messageID);
-        const end = timeoutInterval == null ? null : dateAfterSeconds(timeoutInterval);
+        const end = timeoutDuration == null ? null : dateAfter(timeoutDuration);
         if (record instanceof Record) {
             const blacklistID = await this.blacklistUser(record.userID, end);
             this.deleteAnonUserByID(record.userID);
             if (end != null) {
-                await this.audit.timeout(mod, blacklistID, record, timeoutInterval)
+                await this.audit.timeout(mod, blacklistID, record, timeoutDuration)
             } else {
                 await this.audit.blacklist(mod, blacklistID, record);
             }

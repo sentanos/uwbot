@@ -8,7 +8,13 @@ import {
 import {Bot} from "../bot";
 import {GuildMember, Message, MessageAttachment, MessageEmbed, Snowflake, User} from "discord.js";
 import {XP, XPModule} from "../modules/xp";
-import {formatInterval, IntervalResponse, smartFindInterval, titlecase} from "../util";
+import {
+    DurationResponse,
+    smartFindDuration,
+    titlecase,
+    formatDuration
+} from "../util";
+import moment from "moment-timezone";
 
 class RequiresXP extends Command {
     protected xp: XPModule;
@@ -151,16 +157,18 @@ export class XPHistory extends RequiresXP {
 
     async exec(message: Message, personOrInterval?: string): Promise<Message> {
         let user: User;
-        let interval = -1;
+        let duration = null;
+        let all = false;
         if (personOrInterval != null) {
-            let resp: IntervalResponse = null;
+            let resp: DurationResponse = null;
             try {
-                resp = smartFindInterval(this.bot, message.content, true);
+                resp = smartFindDuration(this.bot, message.content, true);
             } catch (e) {
                 user = await this.bot.getUserFromMessage(message);
             }
             if (resp != null) {
-                interval = resp.interval;
+                duration = resp.duration;
+                all = resp.all;
                 if (resp.raw.length > 0) {
                     user = await this.bot.getUserFromMessage(message, resp.raw)
                 } else {
@@ -171,20 +179,20 @@ export class XPHistory extends RequiresXP {
             user = message.author;
         }
 
-        if (interval == -1) {
-            interval = 31536000; // 1 year
+        if (duration == null) {
+            duration = moment.duration(1, "year");
         }
 
         let from: Date = null;
-        if (interval > 0) {
-            from = new Date(new Date().getTime() - interval * 1000);
+        if (!all) {
+            from = new Date(new Date().getTime() - duration.asSeconds() * 1000);
         }
         const image = await this.xp.generateHistoryGraph(user.id, from, new Date());
         return message.channel.send(new MessageEmbed()
             .attachFiles([new MessageAttachment(image, "graph.png")])
             .setImage("attachment://graph.png")
             .setTitle(`XP History for ${user.tag}: ` +
-                (interval < 0 ? "All Data" : ("Past " + titlecase(formatInterval(interval)))))
+                (all ? "All Data" : ("Past " + titlecase(formatDuration(duration)))))
             .setColor(this.bot.displayColor()));
     }
 }

@@ -9,10 +9,9 @@ import {Bot} from "../bot";
 import {Message, MessageEmbed, User} from "discord.js";
 import {ModerationModule} from "../modules/moderation";
 import {
-    dateAfterSeconds,
-    formatInterval,
-    parseInterval,
-    smartFindInterval,
+    dateAfter, formatDuration, formatInterval,
+    parseDuration,
+    smartFindDuration,
     timeDiff
 } from "../util";
 import {Mutes} from "../database/models/mutes";
@@ -48,14 +47,14 @@ export class SelfMute extends RequiresModeration {
         if (await this.mod.isMuted(message.author.id)) {
             throw new Error("SAFE: You are already muted");
         }
-        const interval = parseInterval((this.bot.getModule("commands") as CommandsModule)
+        const duration = parseDuration((this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content));
-        await this.mod.mute(message.author, message.author, "Self mute", interval,
+        await this.mod.mute(message.author, message.author, "Self mute", duration,
             message);
         return message.channel.send(new MessageEmbed()
-            .setDescription(`${message.author.tag} self muted for ${formatInterval(interval)}`)
+            .setDescription(`${message.author.tag} self muted for ${formatDuration(duration)}`)
             .setFooter("Mute ends on")
-            .setTimestamp(dateAfterSeconds(interval))
+            .setTimestamp(dateAfter(duration))
             .setColor(this.bot.displayColor()));
     }
 }
@@ -76,21 +75,21 @@ export class Mute extends RequiresModeration {
 
     async exec(message: Message, user: string): Promise<Message> {
         const target: User = await this.bot.getUserFromMessage(message, user);
-        const response = smartFindInterval(this.bot, message.content, false, 1);
+        const response = smartFindDuration(this.bot, message.content, false, 1);
         const reason = response.raw.length > 0 ? response.raw : "No reason provided";
         const prevDate: Date | void = await this.mod.mute(message.author, target, reason,
-            response.interval, message);
+            response.duration, message);
         let embed = new MessageEmbed();
         if (prevDate instanceof Date) {
             const prevInterval = timeDiff(prevDate, new Date()) / 1000;
             embed.setDescription(`${target.tag} was already muted with ` +
                 `${formatInterval(prevInterval)} remaining. Their mute time has now been ` +
-                `changed to ${formatInterval(response.interval)}.`);
+                `changed to ${formatDuration(response.duration)}.`);
         } else {
-            embed.setDescription(`Muted ${target.tag} for ${formatInterval(response.interval)}`)
+            embed.setDescription(`Muted ${target.tag} for ${formatDuration(response.duration)}`)
         }
         embed.setFooter("Mute ends on")
-            .setTimestamp(dateAfterSeconds(response.interval))
+            .setTimestamp(dateAfter(response.duration))
             .setColor(this.bot.displayColor());
         return message.channel.send(embed);
     }

@@ -10,8 +10,16 @@ import {
 } from "./modules/commands";
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
+import moment from 'moment-timezone';
+import {Duration} from "moment";
 
-const intervalUnits = [
+type unit =  {
+    name: moment.unitOfTime.Base,
+    shorthands: string[],
+    seconds: number
+}
+
+const intervalUnits: unit[] = [
     {
         name: "year",
         shorthands: ["y"],
@@ -19,12 +27,12 @@ const intervalUnits = [
     },
     {
         name: "month",
-        shorthands: ["mo"],
+        shorthands: ["mo", "mos"],
         seconds: 2592000
     },
     {
         name: "week",
-        shorthands: ["w", "wk"],
+        shorthands: ["w", "wk", "wks"],
         seconds:  604800
     },
     {
@@ -34,12 +42,12 @@ const intervalUnits = [
     },
     {
         name: "hour",
-        shorthands: ["h", "hr"],
+        shorthands: ["h", "hr", "hrs"],
         seconds: 3600
     },
     {
         name: "minute",
-        shorthands: ["m", "min"],
+        shorthands: ["m", "min", "mins"],
         seconds: 60
     },
     {
@@ -54,16 +62,14 @@ const intervalUnits = [
 //   - All names above
 //   - All shorthands above
 //   - All names above with an "s" appended (eg. seconds)
-//   - All shorthands above with an "s" appended (eg. mins)
-const unitMap = new Map<string, number>();
+const unitMap = new Map<string, unit>();
 for (let i = 0; i < intervalUnits.length; i++) {
     const unit = intervalUnits[i];
-    unitMap.set(unit.name, unit.seconds);
-    unitMap.set(unit.name + "s", unit.seconds);
+    unitMap.set(unit.name, unit);
+    unitMap.set(unit.name + "s", unit);
     for (let i = 0; i < unit.shorthands.length; i++) {
         const short = unit.shorthands[i];
-        unitMap.set(short, unit.seconds);
-        unitMap.set(short + "s", unit.seconds);
+        unitMap.set(short, unit);
     }
 }
 
@@ -91,6 +97,11 @@ export const dateAfterSeconds = (seconds: number): Date => {
     return new Date(new Date().getTime() + seconds * 1000);
 };
 
+// Returns the date in the future by the given duration
+export const dateAfter = (duration: Duration): Date => {
+    return dateAfterSeconds(duration.asSeconds());
+};
+
 // Returns the given array sorted in alphabetical order (a-z)
 export const alphabetical = (arr: string[]): string[] => {
     return arr.sort((a: string, b: string): number => {
@@ -104,21 +115,34 @@ export const alphabetical = (arr: string[]): string[] => {
     });
 };
 
-// Returns an interval if it can be parsed, or -1 if it cannot be
-// Returns -2 if the interval is "all"
-const tryInterval = (content: string): number => {
-    if (content === "all") {
-        return -2;
+const tryDuration = (content: string, includeAll: boolean): {
+    success: boolean
+    all: boolean
+    duration?: Duration
+} => {
+    if (includeAll && content === "all") {
+        return {
+            success: true,
+            all: true
+        }
     }
     try {
-        return parseInterval(content);
+        return {
+            success: true,
+            all: false,
+            duration: parseDuration(content)
+        };
     } catch (e) {
-        return -1;
+        return {
+            success: false,
+            all: false
+        }
     }
 };
 
-export type IntervalResponse = {
-    interval: number,
+export type DurationResponse = {
+    duration: Duration,
+    all: boolean
     args: string[],
     offset: number,
     raw: string
@@ -130,9 +154,9 @@ export type IntervalResponse = {
 // Works when the interval has spaces. Offset is the number of arguments before the time
 // interval can appear. The interval will be found if it is either the first argument after
 // others or the last argument.
-// This includes the additional interval "all" which returns an interval value of -2.
-export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean, offset: number = 0):
-    IntervalResponse => {
+// This includes the additional interval "all" which returns a null duration and true all boolean.
+export const smartFindDuration = (bot: Bot, content: string, includeAll: boolean, offset: number = 0):
+    DurationResponse => {
     const handler = bot.getModule("commands") as CommandsModule;
     const after = handler.getRawContent(content, offset);
     const sep = handler.settings("separator");
@@ -141,11 +165,12 @@ export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean
     if (firstSep < 0) {
         firstSep = after.length;
     }
-    const beginningNoSpaces = tryInterval(after.substring(0, firstSep));
-    if (includeAll ? beginningNoSpaces != -1 : beginningNoSpaces > 0) {
+    const beginningNoSpaces = tryDuration(after.substring(0, firstSep), includeAll);
+    if (beginningNoSpaces.success) {
         const raw = after.substring(firstSep + sep.length);
         return {
-            interval: beginningNoSpaces,
+            duration: beginningNoSpaces.duration,
+            all: beginningNoSpaces.all,
             args: raw.split(sep),
             offset: 1,
             raw: raw
@@ -156,11 +181,12 @@ export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean
     if (secondSep < 0) {
         secondSep = after.length;
     }
-    const beginningSpaces = tryInterval(after.substring(0, secondSep));
-    if (includeAll ? beginningSpaces != -1 : beginningSpaces > 0) {
+    const beginningSpaces = tryDuration(after.substring(0, secondSep), includeAll);
+    if (beginningSpaces.success) {
         const raw = after.substring(secondSep + sep.length);
         return {
-            interval: beginningSpaces,
+            duration: beginningSpaces.duration,
+            all: beginningSpaces.all,
             args: raw.split(sep),
             offset: 2,
             raw: raw
@@ -169,11 +195,12 @@ export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean
 
     const lastSep = after.lastIndexOf(sep);
     if (lastSep >= 0) {
-        const lastNoSpaces = tryInterval(after.substring(lastSep + sep.length));
-        if (includeAll ? lastNoSpaces != -1 : lastNoSpaces > 0) {
+        const lastNoSpaces = tryDuration(after.substring(lastSep + sep.length), includeAll);
+        if (lastNoSpaces.success) {
             const raw = after.substring(0, lastSep);
             return {
-                interval: lastNoSpaces,
+                duration: lastNoSpaces.duration,
+                all: lastNoSpaces.all,
                 args: raw.split(sep),
                 offset: 0,
                 raw: raw
@@ -181,11 +208,12 @@ export const smartFindInterval = (bot: Bot, content: string, includeAll: boolean
         }
         const secondLastSep = after.lastIndexOf(sep, lastSep - 1);
         if (secondLastSep >= 0) {
-            const lastSpaces = tryInterval(after.substring(secondLastSep + sep.length));
-            if (includeAll ? lastSpaces != -1 : lastSpaces > 0) {
+            const lastSpaces = tryDuration(after.substring(secondLastSep + sep.length), includeAll);
+            if (lastSpaces.success) {
                 const raw = after.substring(0, secondLastSep);
                 return {
-                    interval: lastSpaces,
+                    duration: lastSpaces.duration,
+                    all: lastSpaces.all,
                     args: raw.split(sep),
                     offset: 0,
                     raw: raw
@@ -211,25 +239,28 @@ export const titlecase = (s: string): string => {
     return s.substring(0, idx) + s.charAt(idx).toUpperCase() + s.substring(idx + 1);
 };
 
-export const parseInterval = (intervalInput: string): number => {
-    const matches = intervalInput.toLowerCase().match(/^(\d+)\s?([a-z]+)$/);
+export const parseDuration = (durationInput: string): Duration => {
+    const matches = durationInput.toLowerCase().match(/^(\d+)\s?([a-z]+)$/);
     if (matches != null && matches.length > 2) {
         const num = parseInt(matches[1], 10);
         if (!isNaN(num)) {
             const suffix = matches[2];
             if (unitMap.has(suffix)) {
-                const seconds = num * unitMap.get(suffix);
-                if (!isFinite(seconds) || seconds > 63072000000) {
-                    throw new Error("SAFE: Time interval cannot be over 2000 years")
-                }
-                return seconds;
+                return moment.duration({
+                    [unitMap.get(suffix).name]: num
+                });
             }
         }
     }
     parseIntervalErr();
 };
 
-// Given an interval in seconds, returns the number of days, hours, minutes, and seconds it
+// Same as formatDuration, but takes an interval in seconds
+export const formatInterval = (seconds: number): string => {
+    return formatDuration(moment.duration(seconds, "seconds"));
+};
+
+// Given a duration, returns the number of days, hours, minutes, and seconds it
 // is equal to.
 //
 // Units are included largest to smallest, plural if more than 1, delimited by commas, and the last
@@ -237,14 +268,21 @@ export const parseInterval = (intervalInput: string): number => {
 //
 // For example, 86401 seconds would be formatted as "1 day and 1 second" and 5410 seconds would
 // be formatted as "1 hour, 30 minutes, and 10 seconds"
-export const formatInterval = (seconds: number): string => {
+export const formatDuration = (interval: moment.Duration): string => {
     let parts: string[] = [];
+    let adjustDays = 0;
     for (let i = 0; i < intervalUnits.length; i++) {
         const unit = intervalUnits[i];
-        const div = Math.floor(seconds / unit.seconds);
+        let div = interval.get(unit.name);
+        // Exception for moment intervals: Weeks are considered a subset of days, so 1 week will
+        // not remove 7 days
+        if (unit.name === "week") {
+            adjustDays -= div * 7;
+        } else if (unit.name === "day") {
+            div += adjustDays;
+        }
         if (div !== 0) {
             parts.push(`${div} ${unit.name}${div > 1 ? "s" : ""}`);
-            seconds -= div * unit.seconds;
         }
     }
     if (parts.length === 0) {

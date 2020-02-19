@@ -12,8 +12,9 @@ import {
     User
 } from "discord.js";
 import {Mutes} from "../database/models/mutes";
-import {dateAfterSeconds, formatInterval} from "../util";
+import {dateAfterSeconds, formatDuration} from "../util";
 import {SchedulerModule} from "./scheduler";
+import {Duration} from "moment";
 
 const MutedRoleName = "UW-Muted";
 
@@ -87,15 +88,15 @@ export class ModerationModule extends Module {
         await this.scheduler.deleteJobsByContent("MOD_UNMUTE", userID);
     }
 
-    public async mute(moderator: User, target: User, reason: string, interval: number,
+    public async mute(moderator: User, target: User, reason: string, duration: Duration,
                       commandMessage: Message): Promise<Date | void> {
         await this.clearJobs(target.id);
-        const res = await this.doMute(moderator.id, target.id, interval);
+        const res = await this.doMute(moderator.id, target.id, duration.asSeconds());
         if (moderator.id !== target.id) {
-            await this.audit.mute(moderator, target, reason, commandMessage, interval);
+            await this.audit.mute(moderator, target, reason, commandMessage, duration);
             target.send(new MessageEmbed()
                 .setDescription(`You have been muted in the UW discord by ${moderator.tag} for ` +
-                    `${formatInterval(interval)}. Reason: ${reason}\n\n[Jump to mute]` +
+                    `${formatDuration(duration)}. Reason: ${reason}\n\n[Jump to mute]` +
                     `(${commandMessage.url})`)
                 .setColor(this.bot.displayColor()))
                 .catch((err) => {

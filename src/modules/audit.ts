@@ -4,7 +4,8 @@ import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
 import {SettingsConfig} from "./settings.skip";
 import {Logs} from "../database/models/logs";
-import {formatInterval} from "../util";
+import {formatDuration} from "../util";
+import {Duration} from "moment";
 
 const settingsConfig: SettingsConfig = {
     channel: {
@@ -112,22 +113,22 @@ export class AuditModule extends Module {
             AuditModule.messageToReason(message), blacklistID)
     }
 
-    public async timeout(user: User, blacklistID: string, record: Record, interval: number) {
+    public async timeout(user: User, blacklistID: string, record: Record, duration: Duration) {
         const alias: AnonAlias = record.alias;
         const message: Message = await (this.bot.guild.channels.get(record.channelID) as TextChannel)
             .messages.fetch(record.messageID);
         return this.log("TIMEOUT", "Anon User Timed Out", user,
             `User ${AuditModule.idenUser(user)} timed out anon **${alias}** ` +
             `\`(blacklist ID: ${blacklistID})\` ` +
-            `for ${formatInterval(interval)} because of the following message ` +
+            `for ${formatDuration(duration)} because of the following message ` +
             `${AuditModule.idenMessage(message)}:`, AuditModule.messageToReason(message), blacklistID)
     }
 
     public async mute(moderator: User, target: User, reason: string, moderationMessage: Message,
-                      interval: number) {
+                      duration: Duration) {
         return this.log("MUTE", "User Muted", moderator,
         `Moderator ${AuditModule.idenUser(moderator)} muted user ${AuditModule.idenUser(target)} ` +
-        `for ${formatInterval(interval)} for the following reason:`,
+        `for ${formatDuration(duration)} for the following reason:`,
         {content: reason, location: moderationMessage.url, jumpType: "action"}, target.id, 16711680)
     }
 

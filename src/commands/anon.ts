@@ -7,7 +7,12 @@ import {
 } from "../modules/commands";
 import {Message, MessageEmbed, Snowflake} from "discord.js";
 import {AnonModule, AnonUser} from "../modules/anon";
-import {dateAfterSeconds, formatInterval, parseInterval, randomColor} from "../util";
+import {
+    dateAfter,
+    formatDuration,
+    parseDuration,
+    randomColor
+} from "../util";
 import {Bot} from "../bot";
 
 class RequiresAnon extends Command {
@@ -127,16 +132,16 @@ export class Timeout extends RequiresAnon {
     }
 
     async exec(message: Message, messageID: string, _: string): Promise<Message> {
-        const duration = (this.bot.getModule("commands") as CommandsModule)
+        const arg = (this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content, 1);
-        const interval = parseInterval(duration);
-        const resp = await this.anon.doBlacklist(messageID, message.author, interval);
+        const duration = parseDuration(arg);
+        const resp = await this.anon.doBlacklist(messageID, message.author, duration);
         return message.channel.send(
             new MessageEmbed()
                 .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) ` +
-                    `for ${formatInterval(interval)}`)
+                    `for ${formatDuration(duration)}`)
                 .setFooter("Timeout ends")
-                .setTimestamp(dateAfterSeconds(interval))
+                .setTimestamp(dateAfter(duration))
                 .setColor(this.bot.displayColor())
         );
     }

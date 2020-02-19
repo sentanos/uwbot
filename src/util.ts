@@ -287,6 +287,18 @@ export const getNthIndex = (str: string, substr: string, n: number): number => {
     return i;
 };
 
+// Returns the nth index of substring within string from the back
+export const getLastNthIndex = (str: string, substr: string, n: number): number => {
+    let i = str.length;
+
+    while (n-- && i-- <= str.length) {
+        i = str.lastIndexOf(substr, i);
+        if (i < 0) break;
+    }
+
+    return i;
+};
+
 // Fisher-Yates Shuffle
 // From https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 export const shuffle = (array: any[]): void => {

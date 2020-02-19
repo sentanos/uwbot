@@ -400,7 +400,8 @@ export class AnonModule extends Module {
             target = targetOpt;
         }
         const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
-        const content: string = handler.getRawContent(message.content, offset - 1);
+        const content: string = offset === 0 ? message.content :
+            handler.getRawContent(message.content, offset - 1);
         const cleaned: string = content.toLowerCase().replace(/[^a-z]/g, "");
         for (let i = 0; i < this.filter.length; i++) {
             if (cleaned.includes(this.filter[i])) {

@@ -1,7 +1,7 @@
 import {GuildMember, Message} from "discord.js";
 import {Bot} from "../bot";
 import {Module} from "../module";
-import {CaseInsensitiveTernaryTrie, getNthIndex} from "../util";
+import {CaseInsensitiveTernaryTrie, getLastNthIndex, getNthIndex} from "../util";
 import {WhitelistModule} from "./whitelist";
 import {SettingsConfig} from "./settings.skip";
 
@@ -235,16 +235,15 @@ export class CommandsModule extends Module {
     }
 
     // Given a message with a command, returns the raw content that comes after the message with
-    // the given offset of separators.
+    // the given offset of arguments.
     //
-    // If offsetIndex < 0, returns content.
+    // If offsetIndex < 0, strips a number of arguments from the end equal to the absolute value of
+    // offsetIndex.
     //
     // For example: if the prefix is > and the separator is a space then ">message 123 hello world"
-    // and an offset index of 1 will return "hello world"
+    // and an offset index of 1 would return "hello world" with an offset index of -1 it would
+    // return "123 hello"
     public getRawContent(content: string, offsetIndex: number = 0): string {
-        if (offsetIndex < 0) {
-            return content;
-        }
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
             this.settings("prefix").length));
         if (maybe == null) {
@@ -253,16 +252,25 @@ export class CommandsModule extends Module {
         const command = maybe as CommandAndAlias;
         const afterCommand: string = content.substring(command.alias.length +
             this.settings("prefix").length + this.settings("separator").length);
-        const idx = getNthIndex(afterCommand, this.settings("separator"), offsetIndex);
+        let idx;
+        if (offsetIndex >= 0) {
+            idx = getNthIndex(afterCommand, this.settings("separator"), offsetIndex);
+        } else {
+            idx = getLastNthIndex(afterCommand, this.settings("separator"), offsetIndex * -1);
+        }
         if (idx === -1) {
             return afterCommand;
         }
-        return afterCommand.substring(idx + this.settings("separator").length);
+        if (offsetIndex >= 0) {
+            return afterCommand.substring(idx + this.settings("separator").length);
+        } else {
+            return afterCommand.substring(0, idx);
+        }
     }
 
     // Given a message, returns a command, the alias used, and command arguments.
     // If no command was called in the message, returns null.
-    private parseCommand(content: string): ParsedCommand | void {
+    public parseCommand(content: string): ParsedCommand | void {
         const maybe: CommandAndAlias | void = this.findCommand(content.substring(
             this.settings("prefix").length));
         if (maybe == null) {

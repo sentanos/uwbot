@@ -139,28 +139,6 @@ export class AuditModule extends Module {
             {location: moderationMessage.url, jumpType: "action"}, target.id, 16711680)
     }
 
-    public async kick(moderator: User, target: User, reason: string, moderationMessage: Message) {
-        return this.log("KICK", "User Kicked", moderator, `Moderator ` +
-        `${AuditModule.idenUser(moderator)} kicked user ${AuditModule.idenUser(target)} ` +
-        `for the following reason:`, {content: reason, location: moderationMessage.url, jumpType: "action"},
-        target.id, 16711680)
-    }
-
-    public async ban(moderator: User, target: User, reason: string, moderationMessage: Message) {
-        return this.log("BAN", "User Banned", moderator, `Moderator ` +
-        `${AuditModule.idenUser(moderator)} banned user ${AuditModule.idenUser(target)} for the ` +
-        `following reason:`, {content: reason, location: moderationMessage.url, jumpType: "action"},
-        target.id, 16711680)
-    }
-
-    public async tempBan(moderator: User, target: User, reason: string, moderationMessage: Message,
-                      interval: number) {
-        return this.log("TEMP_BAN", "User Temporarily Banned", moderator, `Moderator ` +
-        `${AuditModule.idenUser(moderator)} temporarily banned user ${AuditModule.idenUser(target)} ` +
-        `for ${formatInterval(interval)} for the following reason:`,
-        {content: reason, location: moderationMessage.url, jumpType: "action"}, target.id, 16711680)
-    }
-
     public async unblacklist(user: User, blacklistID: string) {
         return this.log("UNBLACKLIST", "Anon User Unblacklisted", user, `User ` +
             `${AuditModule.idenUser(user)} unblacklisted the anon user with blacklist ID ` +

@@ -15,6 +15,8 @@
     "canvas": "^2.6.0",
     "cron": "^1.7.1",
     "discord.js": "github:discordjs/discord.js#c5cbf8677e72522a366d03c9c90e313b864ff582",
+    "moment": "^2.24.0",
+    "moment-timezone": "^0.5.27",
     "sequelize": "^5.19.0",
     "sqlite3": "^4.1.0",
     "uuid": "^3.3.3",

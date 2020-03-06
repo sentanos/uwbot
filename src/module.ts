@@ -112,4 +112,15 @@ export abstract class Module {
     public settingsArr(key: string): string[] {
         return this.settings(key).split(",");
     }
+
+    // Returns the value of a given setting as a map for settings that are comma separated
+    // key:value pairs
+    public settingsMap(key: string): Map<string, string> {
+        const map: Map<string, string> = new Map<string, string>();
+        this.settings(key).split(",").forEach((value) => {
+            const sep = value.split(":");
+            map.set(sep[0], sep[1]);
+        });
+        return map;
+    }
 }

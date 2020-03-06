@@ -84,13 +84,13 @@ export class RemindModule extends Module {
             if (reminder.context === "DM") {
                 message = await (await user.createDM()).messages.fetch(reminder.reminderMessageID);
             } else {
-                message = await (this.bot.guild.channels.get(reminder.channelID) as TextChannel)
+                message = await (this.bot.guild.channels.cache.get(reminder.channelID) as TextChannel)
                     .messages.fetch(reminder.reminderMessageID);
             }
             jobs.push(this.sendReminder(user, reminder.content, message.url));
             if (reminder.context !== "DM"
-                && message.reactions.has(this.settings("emoji"))) {
-                const targets = (await message.reactions.get(this.settings("emoji"))
+                && message.reactions.cache.has(this.settings("emoji"))) {
+                const targets = (await message.reactions.cache.get(this.settings("emoji"))
                     .users.fetch()).array();
                 for (let i = 0; i < targets.length; i++) {
                     if (targets[i].id !== this.bot.client.user.id

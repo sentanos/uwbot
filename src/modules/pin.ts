@@ -71,7 +71,7 @@ export class PinModule extends Module {
         }
         const userID: Snowflake = pin.userID;
         if (user == null || userID === user.id) {
-            const reactions: MessageReaction | void = message.reactions.get(this.settings("emoji"));
+            const reactions: MessageReaction | void = message.reactions.cache.get(this.settings("emoji"));
             if (reactions == null || reactions.count === 0) {
                 await pin.destroy();
                 await message.unpin();

@@ -127,7 +127,7 @@ export class XPModule extends Module {
     }
 
     private async addReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.settings("reward")) == null) {
+        if (member.roles.cache.get(this.settings("reward")) == null) {
             await member.roles.add(this.settings("reward"));
             return true;
         }
@@ -135,7 +135,7 @@ export class XPModule extends Module {
     }
 
     private async removeReward(member: GuildMember): Promise<boolean> {
-        if (member.roles.get(this.settings("reward")) != null) {
+        if (member.roles.cache.get(this.settings("reward")) != null) {
             await member.roles.remove(this.settings("reward"));
             return true;
         }
@@ -146,10 +146,10 @@ export class XPModule extends Module {
                                notifyRemove?: PartialTextBasedChannelFields):
         Promise<boolean> {
         let member: GuildMember;
-        if (!this.bot.guild.members.has(user)) {
+        if (!this.bot.guild.members.cache.has(user)) {
             return false;
         }
-        member = this.bot.guild.members.get(user);
+        member = this.bot.guild.members.cache.get(user);
         if (await this.checkReward(user)) {
             if (await this.addReward(member) && notifyAdd != null) {
                 await notifyAdd.send(new MessageEmbed()
@@ -166,7 +166,7 @@ export class XPModule extends Module {
     }
 
     public async updateAll(): Promise<void> {
-        const rewarded = await this.bot.guild.roles.get(this.settings("reward")).members.array();
+        const rewarded = await this.bot.guild.roles.cache.get(this.settings("reward")).members.array();
         let jobs = [];
         for (let i = 0; i < rewarded.length; i++) {
             jobs.push((async () => {

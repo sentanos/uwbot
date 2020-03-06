@@ -47,14 +47,15 @@ export class SuggestionsModule extends Module {
     }
 
     private eligible(member: GuildMember): boolean {
-        return !this.settingsHas("disallowRole") || !member.roles.has(this.settings("disallowRole"));
+        return !this.settingsHas("disallowRole") || !member.roles.cache.has(
+            this.settings("disallowRole"));
     }
 
     private checkEligible(user: User, dq: Disqualification[]): boolean {
         if (user.id === this.bot.client.user.id) {
             return false;
         }
-        if (!this.bot.guild.members.has(user.id)) {
+        if (!this.bot.guild.members.cache.has(user.id)) {
             dq.push({
                 user: user,
                 reason: "User left the guild"
@@ -75,35 +76,35 @@ export class SuggestionsModule extends Module {
 
     private async voteComplete(originalContent: string, suggestion: Message, voting: Message):
         Promise<void> {
-        const upReact = voting.reactions.get(this.settings("upvoteEmoji"));
-        const downReact = voting.reactions.get(this.settings("downvoteEmoji"));
+        const upReact = voting.reactions.cache.get(this.settings("upvoteEmoji"));
+        const downReact = voting.reactions.cache.get(this.settings("downvoteEmoji"));
         await Promise.all([upReact.users.fetch(), downReact.users.fetch()]);
-        let up = new Set<string>(upReact.users.keyArray());
-        let down = new Set<string>(downReact.users.keyArray());
+        let up = new Set<string>(upReact.users.cache.keyArray());
+        let down = new Set<string>(downReact.users.cache.keyArray());
         let dq: Disqualification[] = [];
 
         for (const id of up) {
             if (down.has(id) && id !== this.bot.client.user.id) {
                 dq.push({
-                    user: upReact.users.get(id),
+                    user: upReact.users.cache.get(id),
                     reason: "User both upvoted and downvoted"
                 });
                 up.delete(id);
                 down.delete(id);
             } else {
-                if (!this.checkEligible(upReact.users.get(id), dq)) {
+                if (!this.checkEligible(upReact.users.cache.get(id), dq)) {
                     up.delete(id);
                 }
             }
         }
         for (const id of down) {
-            if (!this.checkEligible(downReact.users.get(id), dq)) {
+            if (!this.checkEligible(downReact.users.cache.get(id), dq)) {
                 down.delete(id);
             }
         }
 
-        let upTags: string[] = [...up].map(id => upReact.users.get(id).tag);
-        let downTags: string[] = [...down].map(id => downReact.users.get(id).tag);
+        let upTags: string[] = [...up].map(id => upReact.users.cache.get(id).tag);
+        let downTags: string[] = [...down].map(id => downReact.users.cache.get(id).tag);
         let dqTags: string[] = dq.map(dqd => `${dqd.user.tag} (${dqd.reason})`);
 
         let results: Message;
@@ -120,7 +121,7 @@ export class SuggestionsModule extends Module {
 
         const ids = this.settingsArr("resultsChannels");
         for (let i = 0; i < ids.length; i++) {
-            const channel = this.bot.guild.channels.get(ids[i]) as TextChannel;
+            const channel = this.bot.guild.channels.cache.get(ids[i]) as TextChannel;
             let message = await channel.send(resultEmbed);
             if (i === 0) {
                 results = message as Message;
@@ -135,7 +136,7 @@ export class SuggestionsModule extends Module {
 
     public async event(name: string, payload: string) {
         if (name === "SUGGESTIONS_VOTECOMPLETE") {
-            const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
+            const channel = this.bot.guild.channels.cache.get(this.settings("channel")) as TextChannel;
             const data: {oc: string, suggestion: string, voting: string} = JSON.parse(payload);
             let suggestion: Message;
             let voting: Message;

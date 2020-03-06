@@ -100,9 +100,9 @@ export class XPLeaderboard extends RequiresXP {
         for (let i = 0; i < lb.length; i++) {
             const row: {userID: Snowflake, totalXp: XP} = lb[i];
             let name;
-            let inGuild = this.bot.guild.members.has(row.userID);
+            let inGuild = this.bot.guild.members.cache.has(row.userID);
             if (inGuild) {
-                name = this.bot.guild.members.get(row.userID).user.tag;
+                name = this.bot.guild.members.cache.get(row.userID).user.tag;
             } else {
                 name = (await this.bot.client.users.fetch(row.userID)).tag;
             }

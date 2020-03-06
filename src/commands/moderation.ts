@@ -102,6 +102,10 @@ class GenericSelfPunish extends RequiresModeration {
     }
 
     async exec(message: Message): Promise<Message> {
+        const punishment: Punishments | void = await this.mod.getPunishment(message.author.id);
+        if (punishment instanceof Punishments) {
+            throw new Error(`SAFE: You are supposed to be ${punishment.type}d... how did you do that?`);
+        }
         const duration = parseDuration((this.bot.getModule("commands") as CommandsModule)
             .getRawContent(message.content));
         await this.mod.punish(this.type, message.author, message.author, `Self ${this.type}`,

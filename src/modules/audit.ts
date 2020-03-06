@@ -53,7 +53,7 @@ export class AuditModule extends Module {
     public async log(action: string, title: string, author: User, description: string,
         reason?: Reason, target?: string, color?: number,  ...fields: {name: string, value: string}[]) :
         Promise<void> {
-        const channel = this.bot.guild.channels.get(this.settings("channel")) as TextChannel;
+        const channel = this.bot.guild.channels.cache.get(this.settings("channel")) as TextChannel;
         const embed = new MessageEmbed();
         embed.setTitle(title);
         if (reason != null && reason.content != null) {
@@ -104,7 +104,7 @@ export class AuditModule extends Module {
 
     public async blacklist(user: User, blacklistID: string, record: Record) {
         const alias: AnonAlias = record.alias;
-        const message: Message = await (this.bot.guild.channels.get(record.channelID) as TextChannel)
+        const message: Message = await (this.bot.guild.channels.cache.get(record.channelID) as TextChannel)
             .messages.fetch(record.messageID);
         return this.log("BLACKLIST", "Anon User Blacklisted", user,
             `User ${AuditModule.idenUser(user)} blacklisted anon **${alias}** ` +
@@ -115,7 +115,7 @@ export class AuditModule extends Module {
 
     public async timeout(user: User, blacklistID: string, record: Record, duration: Duration) {
         const alias: AnonAlias = record.alias;
-        const message: Message = await (this.bot.guild.channels.get(record.channelID) as TextChannel)
+        const message: Message = await (this.bot.guild.channels.cache.get(record.channelID) as TextChannel)
             .messages.fetch(record.messageID);
         return this.log("TIMEOUT", "Anon User Timed Out", user,
             `User ${AuditModule.idenUser(user)} timed out anon **${alias}** ` +

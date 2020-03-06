@@ -35,7 +35,7 @@ export class Bot {
         this.DB = sequelize;
         this.config = config;
         this.filter = filter;
-        this.guild = client.guilds.get(config.guild);
+        this.guild = client.guilds.cache.get(config.guild);
         this.modules = {};
         this.loaded = new Set<string>();
         this.enabled = new Set<string>();
@@ -64,12 +64,12 @@ export class Bot {
     public async getUser(guild: Guild, find: string): Promise<User | void> {
         find = find.toLowerCase();
         let member: GuildMember;
-        member = guild.members.find(m => m.nickname != null && m.nickname.toLowerCase() === find);
+        member = guild.members.cache.find(m => m.nickname != null && m.nickname.toLowerCase() === find);
         if (member == null) {
-            member = guild.members.find(m => m.user.username.toLowerCase() === find);
+            member = guild.members.cache.find(m => m.user.username.toLowerCase() === find);
         }
         if (member == null) {
-            member = guild.members.find(m => m.user.tag.toLowerCase() === find);
+            member = guild.members.cache.find(m => m.user.tag.toLowerCase() === find);
         }
         if (member == null) {
             try {
@@ -102,7 +102,7 @@ export class Bot {
     // Returns the channel in the bot's guild with the given name.
     // Throws an error if such a channel does not exist.
     public getChannelByName(name: string): TextChannel {
-        const channel: TextChannel | void = this.guild.channels.find(
+        const channel: TextChannel | void = this.guild.channels.cache.find(
             ch => ch.name === name) as TextChannel;
         if (channel == null) {
             throw new Error("Channel not found")

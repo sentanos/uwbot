@@ -169,7 +169,7 @@ export class CommandsModule extends Module {
                 return true;
             case Permission.VerifiedGuildMember:
                 if (this.settingsHas("requiredRole")) {
-                    return user.roles.has(this.settings("requiredRole"));
+                    return user.roles.cache.has(this.settings("requiredRole"));
                 } else {
                     return true;
                 }

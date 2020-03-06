@@ -42,8 +42,8 @@ export class ChannelGetCommand extends ChannelCommand {
         let channels: string[] = [];
         for (let i = 0; i < ids.length; i++) {
             const id: Snowflake = ids[i];
-            if (this.bot.guild.channels.has(id)) {
-                channels.push("#" + this.bot.guild.channels.get(id).name)
+            if (this.bot.guild.channels.cache.has(id)) {
+                channels.push("#" + this.bot.guild.channels.cache.get(id).name)
             } else {
                 channels.push(id);
             }
@@ -62,12 +62,12 @@ export class ChannelAddCommand extends ChannelCommand {
     }
 
     async exec(message: Message, channel: string): Promise<Message> {
-        if (!this.bot.guild.channels.has(channel)) {
+        if (!this.bot.guild.channels.cache.has(channel)) {
             throw new Error("SAFE: Channel does not exist. Make sure to use the channel ID, NOT" +
                 " the channel name.");
         }
         await this.channels.add(channel);
-        return message.channel.send("Added channel #" + message.guild.channels.get(channel).name +
+        return message.channel.send("Added channel #" + message.guild.channels.cache.get(channel).name +
             " to " + this.listName)
     }
 }

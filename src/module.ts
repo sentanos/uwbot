@@ -57,7 +57,7 @@ export abstract class Module {
 
     // Given an event name, listens to that event from the module's bot client with the given
     // function.
-    protected listen(event: string, func: Function) {
+    protected listen(event: string, func: (...args: any[]) => void) {
         this.bot.client.on(event, func);
         this.listeners.push({event, func})
     }

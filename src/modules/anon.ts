@@ -465,7 +465,7 @@ export class AnonUser {
     private checkMuted() {
         if (this.anon.settingsHas("mutedRoles")) {
             this.anon.settingsArr("mutedRoles").forEach((roleID) => {
-                if (this.anon.guild.member(this.user).roles.has(roleID)) {
+                if (this.anon.guild.member(this.user).roles.cache.has(roleID)) {
                     throw new Error("SAFE: You cannot use anon while muted");
                 }
             });

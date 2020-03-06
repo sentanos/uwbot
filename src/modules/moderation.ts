@@ -31,7 +31,7 @@ export class ModerationModule extends Module {
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
 
-        let role = this.bot.guild.roles.find(r => r.name === MutedRoleName);
+        let role = this.bot.guild.roles.cache.find(r => r.name === MutedRoleName);
         if (role == null) {
             role = await this.bot.guild.roles.create({
                 data: {
@@ -45,7 +45,7 @@ export class ModerationModule extends Module {
         this.listen("channelCreate", this.channelCreate.bind(this));
         this.listen("guildMemberAdd", this.guildMemberAdd.bind(this));
         this.listen("message", this.onMessage.bind(this));
-        this.bot.guild.channels.each((channel: GuildChannel) => {
+        this.bot.guild.channels.cache.each((channel: GuildChannel) => {
             this.updatePermissions(channel)
                 .catch((err) => {
                     console.error("MODERATION: Error updating muted role permissions for channel " +
@@ -63,8 +63,8 @@ export class ModerationModule extends Module {
     public async event(name: string, payload: string): Promise<void> {
         if (name === "MOD_UNMUTE") {
             await this.doUnmute(payload);
-            if (this.bot.guild.members.has(payload)) {
-                this.bot.guild.members.get(payload).send(new MessageEmbed()
+            if (this.bot.guild.members.cache.has(payload)) {
+                this.bot.guild.members.cache.get(payload).send(new MessageEmbed()
                     .setDescription("Your mute in the UW discord has ended")
                     .setColor(this.bot.displayColor()))
                 .catch((err) => {
@@ -126,14 +126,14 @@ export class ModerationModule extends Module {
     }
 
     private async applyMute(userID: Snowflake): Promise<void> {
-        if (this.bot.guild.members.has(userID)) {
-            await this.bot.guild.members.get(userID).roles.add(this.role);
+        if (this.bot.guild.members.cache.has(userID)) {
+            await this.bot.guild.members.cache.get(userID).roles.add(this.role);
         }
     }
 
     private async applyUnmute(userID: Snowflake): Promise<void> {
-        if (this.bot.guild.members.has(userID)) {
-            await this.bot.guild.members.get(userID).roles.remove(this.role);
+        if (this.bot.guild.members.cache.has(userID)) {
+            await this.bot.guild.members.cache.get(userID).roles.remove(this.role);
         }
     }
 

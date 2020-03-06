@@ -17,6 +17,7 @@ import {Punishments} from "../database/models/punishments";
 import {dateAfterSeconds, formatDuration} from "../util";
 import {SchedulerModule} from "./scheduler";
 import {Duration} from "moment";
+import {SettingsConfig} from "./settings.skip";
 
 export type PunishmentRoleType = "mute" | "quarantine";
 
@@ -50,10 +51,25 @@ const PunishmentRoles: {
         },
         overwrites: {
             VIEW_CHANNEL: false,
-            CONNECT: false
+            CONNECT: false,
+            ADD_REACTIONS: false,
+            SEND_MESSAGES: false,
+            SPEAK: false
         }
     }
 ];
+
+const settingsConfig: SettingsConfig = {
+    reverseBoundRoles: {
+        description: "A map (key:value,key2:value2) of punishment names to roles that are" +
+            " reversely bound. That is, if the punishment role is added the given role is" +
+            " removed and when the punishment role is removed the given role is added back. This" +
+            " is to facilitate unusual permission overwrite settings. Note that even if the" +
+            " punished user does not have the role to begin with, they will still receive it" +
+            " when the punishment is removed.",
+        optional: true
+    }
+};
 
 export class ModerationModule extends Module {
     private audit: AuditModule;
@@ -61,7 +77,7 @@ export class ModerationModule extends Module {
     private roles: Map<PunishmentRoleType, Role>;
 
     constructor(bot: Bot) {
-        super(bot, "moderation", ["audit", "scheduler"]);
+        super(bot, "moderation", ["audit", "scheduler"], settingsConfig);
         this.roles = new Map<PunishmentRoleType, Role>();
     }
 
@@ -180,6 +196,11 @@ export class ModerationModule extends Module {
         if (!this.roles.has(name)) {
             throw new Error("Role not found");
         }
+        const hasRBound = this.settingsHas("reverseBoundRoles");
+        let rBound;
+        if (hasRBound) {
+            rBound = this.settingsMap("reverseBoundRoles");
+        }
         for (let i = 0; i < PunishmentRoles.length; i++) {
             const role = PunishmentRoles[i];
             let roleEnable = false;
@@ -187,6 +208,10 @@ export class ModerationModule extends Module {
                 roleEnable = enable;
             }
             await this.setRole(this.roles.get(role.name), userID, roleEnable);
+            if (hasRBound && rBound.has(role.name)) {
+                await this.setRole(this.bot.guild.roles.cache.get(rBound.get(role.name)), userID,
+                    !roleEnable);
+            }
         }
     }
 

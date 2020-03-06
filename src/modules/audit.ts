@@ -4,8 +4,9 @@ import {Message, MessageEmbed, TextChannel, User} from "discord.js";
 import {AnonAlias, Record} from "./anon";
 import {SettingsConfig} from "./settings.skip";
 import {Logs} from "../database/models/logs";
-import {formatDuration} from "../util";
+import {formatDuration, titlecase} from "../util";
 import {Duration} from "moment";
+import {PunishmentRoleType} from "./moderation";
 
 const settingsConfig: SettingsConfig = {
     channel: {
@@ -51,8 +52,8 @@ export class AuditModule extends Module {
     // color (optional): A custom color for the log embed. Default is display color.
     // fields (optional): Additional embed fields
     public async log(action: string, title: string, author: User, description: string,
-        reason?: Reason, target?: string, color?: number,  ...fields: {name: string, value: string}[]) :
-        Promise<void> {
+                     reason?: Reason, target?: string, color?: number,
+                     ...fields: {name: string, value: string}[]) : Promise<void> {
         const channel = this.bot.guild.channels.cache.get(this.settings("channel")) as TextChannel;
         const embed = new MessageEmbed();
         embed.setTitle(title);
@@ -124,17 +125,19 @@ export class AuditModule extends Module {
             `${AuditModule.idenMessage(message)}:`, AuditModule.messageToReason(message), blacklistID)
     }
 
-    public async mute(moderator: User, target: User, reason: string, moderationMessage: Message,
-                      duration: Duration) {
-        return this.log("MUTE", "User Muted", moderator,
-        `Moderator ${AuditModule.idenUser(moderator)} muted user ${AuditModule.idenUser(target)} ` +
-        `for ${formatDuration(duration)} for the following reason:`,
-        {content: reason, location: moderationMessage.url, jumpType: "action"}, target.id, 16711680)
+    public async genericPunishment(type: PunishmentRoleType, moderator: User, target: User,
+                                   reason: string, moderationMessage: Message, duration: Duration) {
+        return this.log(type.toUpperCase(), `User ${titlecase(type)}d`, moderator,
+            `Moderator ${AuditModule.idenUser(moderator)} ${type}d user ` +
+            `${AuditModule.idenUser(target)} for ${formatDuration(duration)} for the following reason:`,
+            {content: reason, location: moderationMessage.url, jumpType: "action"},
+            target.id, 16711680)
     }
 
-    public async unmute(moderator: User, target: User, moderationMessage: Message) {
-        return this.log("UNMUTE", "User Unmuted", moderator,
-        `Moderator ${AuditModule.idenUser(moderator)} unmuted user ` +
+    public async genericUnpunishment(type: PunishmentRoleType, moderator: User, target: User,
+                                     moderationMessage: Message) {
+        return this.log(`UN${type.toUpperCase()}`, `User Un${type}d`, moderator,
+            `Moderator ${AuditModule.idenUser(moderator)} un${type}d user ` +
             AuditModule.idenUser(target),
             {location: moderationMessage.url, jumpType: "action"}, target.id, 16711680)
     }

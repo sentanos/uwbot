@@ -1,8 +1,10 @@
 import {Sequelize, Model, DataTypes} from "sequelize";
+import {PunishmentRoleType} from "../../modules/moderation";
 
-export class Mutes extends Model {
+export class Punishments extends Model {
     public userID!: string;
     public initiatorID!: string;
+    public type!: PunishmentRoleType;
     public expiration!: Date;
 
     public readonly createdAt!: Date;
@@ -10,12 +12,16 @@ export class Mutes extends Model {
 }
 
 export function init(sequelize: Sequelize): void {
-    Mutes.init({
+    Punishments.init({
         userID: {
             type: DataTypes.STRING,
             primaryKey: true
         },
         initiatorID: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        type: {
             type: DataTypes.STRING,
             allowNull: false
         },
@@ -25,8 +31,8 @@ export function init(sequelize: Sequelize): void {
         }
     }, {
         sequelize: sequelize,
-        modelName: "mutes",
-        tableName: "mutes"
+        modelName: "punishments",
+        tableName: "punishments"
     });
 };
 

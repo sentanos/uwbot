@@ -7,43 +7,82 @@ import {
     GuildMember,
     Message,
     MessageEmbed,
+    PermissionOverwriteOption,
     Role,
+    RoleData,
     Snowflake,
     User
 } from "discord.js";
-import {Mutes} from "../database/models/mutes";
+import {Punishments} from "../database/models/punishments";
 import {dateAfterSeconds, formatDuration} from "../util";
 import {SchedulerModule} from "./scheduler";
 import {Duration} from "moment";
 
-const MutedRoleName = "UW-Muted";
+export type PunishmentRoleType = "mute" | "quarantine";
+
+export type PreviousPunishment = {
+    type: PunishmentRoleType,
+    expire: Date
+}
+
+const PunishmentRoles: {
+    name: PunishmentRoleType,
+    roleData: RoleData,
+    overwrites: PermissionOverwriteOption
+}[] = [
+    {
+        name: "mute",
+        roleData: {
+            name: "UW-Muted",
+            permissions: 0
+        },
+        overwrites: {
+            ADD_REACTIONS: false,
+            SEND_MESSAGES: false,
+            SPEAK: false
+        }
+    },
+    {
+        name: "quarantine",
+        roleData: {
+            name: "UW-Quarantined",
+            permissions: 0
+        },
+        overwrites: {
+            VIEW_CHANNEL: false,
+            CONNECT: false
+        }
+    }
+];
 
 export class ModerationModule extends Module {
     private audit: AuditModule;
     private scheduler: SchedulerModule;
-    private role: Role;
+    private roles: Map<PunishmentRoleType, Role>;
 
     constructor(bot: Bot) {
         super(bot, "moderation", ["audit", "scheduler"]);
+        this.roles = new Map<PunishmentRoleType, Role>();
     }
 
     public async initialize() {
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
 
-        let role = this.bot.guild.roles.cache.find(r => r.name === MutedRoleName);
-        if (role == null) {
-            role = await this.bot.guild.roles.create({
-                data: {
-                    name: "UW-Muted",
-                    permissions: 0
-                }
-            });
+        for (let i = 0; i < PunishmentRoles.length; i++) {
+            let pRole = PunishmentRoles[i];
+            let role = this.bot.guild.roles.cache.find(r => r.name === pRole.roleData.name);
+            if (role == null) {
+                role = await this.bot.guild.roles.create({
+                    data: pRole.roleData
+                });
+            }
+            this.roles.set(pRole.name, role);
         }
-        this.role = role;
 
         this.listen("channelCreate", this.channelCreate.bind(this));
         this.listen("guildMemberAdd", this.guildMemberAdd.bind(this));
+        this.listen("typingStart", this.typingStart.bind(this));
         this.listen("message", this.onMessage.bind(this));
         this.bot.guild.channels.cache.each((channel: GuildChannel) => {
             this.updatePermissions(channel)
@@ -52,50 +91,54 @@ export class ModerationModule extends Module {
                         `${channel.id}: ${err.stack}`);
                 });
         });
-        (await Mutes.findAll()).forEach((mute: Mutes) => {
-            this.checkMute(mute.userID)
+        (await Punishments.findAll()).forEach((p: Punishments) => {
+            this.checkModeration(p.userID)
                 .catch((err) => {
-                    console.error("MODERATION: Error checking mute for " + mute.userID + ": " + err.stack);
+                    console.error("MODERATION: Error checking punishment for " + p.userID + ": " + err.stack);
                 })
         });
     }
 
     public async event(name: string, payload: string): Promise<void> {
-        if (name === "MOD_UNMUTE") {
-            await this.doUnmute(payload);
-            if (this.bot.guild.members.cache.has(payload)) {
-                this.bot.guild.members.cache.get(payload).send(new MessageEmbed()
-                    .setDescription("Your mute in the UW discord has ended")
+        if (name === "UNPUNISH") {
+            const {type, targetID}: {type: PunishmentRoleType, targetID: Snowflake}
+                = JSON.parse(payload);
+            await this.doUnpunish(type, targetID);
+            if (this.bot.guild.members.cache.has(targetID)) {
+                this.bot.guild.members.cache.get(targetID).send(new MessageEmbed()
+                    .setDescription(`Your ${type} in the UW discord has ended`)
                     .setColor(this.bot.displayColor()))
-                .catch((err) => {
-                    console.error(`Failed to send unmute message to ${payload}: ${err.stack}`);
-                });
+                    .catch((err) => {
+                        console.error(`Failed to send un${type} message to ${targetID}: ${err.stack}`);
+                    });
             }
         }
     }
 
-    public async isMuted(userID: Snowflake): Promise<boolean> {
-        return await Mutes.findByPk(userID) instanceof Mutes;
+    public getPunishment(userID: Snowflake): Promise<Punishments | void> {
+        return Punishments.findByPk(userID);
     }
 
-    public async checkMute(userID: Snowflake): Promise<void> {
-        if (await this.isMuted(userID)) {
-            await this.applyMute(userID);
+    public async checkModeration(userID: Snowflake): Promise<void> {
+        const punishment = await this.getPunishment(userID);
+        if (punishment instanceof Punishments) {
+            await this.setPunishmentRole(punishment.type, userID, true);
         }
     }
 
-    private async clearJobs(userID: Snowflake): Promise<void> {
-        await this.scheduler.deleteJobsByContent("MOD_UNMUTE", userID);
+    private clearJobs(event: string, type: PunishmentRoleType, targetID: Snowflake): Promise<void> {
+        return this.scheduler.deleteJobsByContent(event, JSON.stringify({type, targetID}));
     }
 
-    public async mute(moderator: User, target: User, reason: string, duration: Duration,
-                      commandMessage: Message): Promise<Date | void> {
-        await this.clearJobs(target.id);
-        const res = await this.doMute(moderator.id, target.id, duration.asSeconds());
+    public async punish(type: PunishmentRoleType, moderator: User, target: User, reason: string,
+                        duration: Duration, commandMessage: Message): Promise<PreviousPunishment | void> {
+        await this.clearJobs(`UNPUNISH`, type, target.id);
+        const res = await this.doPunish(type, moderator.id, target.id, duration.asSeconds());
         if (moderator.id !== target.id) {
-            await this.audit.mute(moderator, target, reason, commandMessage, duration);
+            await this.audit.genericPunishment(type, moderator, target, reason, commandMessage,
+                duration);
             target.send(new MessageEmbed()
-                .setDescription(`You have been muted in the UW discord by ${moderator.tag} for ` +
+                .setDescription(`You have been ${type}d in the UW discord by ${moderator.tag} for ` +
                     `${formatDuration(duration)}. Reason: ${reason}\n\n[Jump to mute]` +
                     `(${commandMessage.url})`)
                 .setColor(this.bot.displayColor()))
@@ -106,61 +149,84 @@ export class ModerationModule extends Module {
         return res;
     }
 
-    private async doMute(initiatorID: Snowflake, targetID: Snowflake, interval: number): Promise<Date | void> {
-        await this.applyMute(targetID);
-        let prev: Date | void = null;
-        let mute: Mutes | void = await Mutes.findByPk(targetID);
-        if (mute != null) {
-            if (mute.initiatorID !== mute.userID) {
-                prev = mute.expiration;
+    // If a previous punishment exists, completely replaces it and cancels unpunishment jobs
+    private async doPunish(type: PunishmentRoleType, initiatorID: Snowflake, targetID: Snowflake,
+                           interval: number): Promise<PreviousPunishment | void> {
+        await this.setPunishmentRole(type, targetID, true);
+        let prev: PreviousPunishment | void = null;
+        let punishment: Punishments | void = await this.getPunishment(targetID);
+        if (punishment instanceof Punishments) {
+            if (punishment.initiatorID !== targetID) {
+                prev = {type: punishment.type, expire: punishment.expiration};
             }
+            await this.clearJobs(`UNPUNISH`, punishment.type, targetID);
         } else {
-            mute = Mutes.build();
+            punishment = Punishments.build();
         }
-        mute.userID = targetID;
-        mute.expiration = dateAfterSeconds(interval);
-        mute.initiatorID = initiatorID;
-        await mute.save();
-        await this.scheduler.schedule("moderation", mute.expiration, "MOD_UNMUTE", targetID);
+        punishment.type = type;
+        punishment.userID = targetID;
+        punishment.expiration = dateAfterSeconds(interval);
+        punishment.initiatorID = initiatorID;
+        await punishment.save();
+        await this.scheduler.schedule("moderation", punishment.expiration,
+            "UNPUNISH", JSON.stringify({type, targetID}));
         return prev;
     }
 
-    private async applyMute(userID: Snowflake): Promise<void> {
-        if (this.bot.guild.members.cache.has(userID)) {
-            await this.bot.guild.members.cache.get(userID).roles.add(this.role);
+    // Gives the given punishment role
+    // Removes all other roles
+    private async setPunishmentRole(name: PunishmentRoleType, userID: Snowflake, enable: boolean):
+        Promise<void> {
+        if (!this.roles.has(name)) {
+            throw new Error("Role not found");
+        }
+        for (let i = 0; i < PunishmentRoles.length; i++) {
+            const role = PunishmentRoles[i];
+            let roleEnable = false;
+            if (role.name === name) {
+                roleEnable = enable;
+            }
+            await this.setRole(this.roles.get(role.name), userID, roleEnable);
         }
     }
 
-    private async applyUnmute(userID: Snowflake): Promise<void> {
+    private async setRole(role: Role, userID: Snowflake, enable: boolean): Promise<void> {
         if (this.bot.guild.members.cache.has(userID)) {
-            await this.bot.guild.members.cache.get(userID).roles.remove(this.role);
+            const roleStore = this.bot.guild.members.cache.get(userID).roles;
+            if (enable) {
+                await roleStore.add(role);
+            } else {
+                await roleStore.remove(role);
+            }
         }
     }
 
-    public async unmute(moderator: User, target: User, commandMessage: Message): Promise<Mutes> {
-        await this.clearJobs(target.id);
-        const res = await this.doUnmute(target.id);
-        await this.audit.unmute(moderator, target, commandMessage);
+    public async unpunish(type: PunishmentRoleType, moderator: User, target: User,
+                          commandMessage: Message): Promise<Punishments> {
+        await this.clearJobs("UNPUNISH", type, target.id);
+        const res = await this.doUnpunish(type, target.id);
+        await this.audit.genericUnpunishment(type, moderator, target, commandMessage);
         return res;
     }
 
     // Does NOT clear jobs
-    private async doUnmute(userID: Snowflake): Promise<Mutes> {
-        await this.applyUnmute(userID);
-        const user: Mutes | void = await Mutes.findByPk(userID);
+    private async doUnpunish(type: PunishmentRoleType, userID: Snowflake): Promise<Punishments> {
+        const user: Punishments | void = await Punishments.findByPk(userID);
         if (user == null) {
-            throw new Error("SAFE: User is not muted");
+            throw new Error(`SAFE: User does not have a ${type}`);
+        } else if (user.type !== type) {
+            throw new Error(`SAFE: User currently has a ${user.type}, not a ${type}`);
         }
+        await this.setPunishmentRole(type, userID, false);
         await user.destroy();
         return user;
     }
 
     private async updatePermissions(channel: GuildChannel) {
-        await channel.updateOverwrite(this.role, {
-            ADD_REACTIONS: false,
-            SEND_MESSAGES: false,
-            SPEAK: false
-        });
+        for (let i = 0; i < PunishmentRoles.length; i++) {
+            let role = PunishmentRoles[i];
+            await channel.updateOverwrite(this.roles.get(role.name), role.overwrites);
+        }
     }
 
     public async channelCreate(channel: Channel) {
@@ -170,12 +236,18 @@ export class ModerationModule extends Module {
     }
 
     public async guildMemberAdd(member: GuildMember) {
-        await this.checkMute(member.user.id);
+        await this.checkModeration(member.user.id);
+    }
+
+    public async typingStart(channel: Channel, user: User) {
+        if (channel.type === "text") {
+            await this.checkModeration(user.id);
+        }
     }
 
     public async onMessage(message: Message) {
-        if (message.guild != null) {
-            await this.checkMute(message.author.id);
+        if (message.channel.type === "text") {
+            await this.checkModeration(message.author.id);
         }
     }
 }

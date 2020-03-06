@@ -134,7 +134,7 @@ export class SelfMute extends GenericSelfPunish {
 export class SelfQuarantine extends GenericSelfPunish {
     constructor(bot) {
         super(bot, "quarantine", {
-            names: ["selfquarantine", "selfq"],
+            names: ["selfquarantine", "selfq", "selfban"],
             usages: {
                 "Quarantine yourself for a given amount of time": ["duration"],
             },

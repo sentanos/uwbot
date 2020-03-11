@@ -18,6 +18,7 @@ import {dateAfterSeconds, formatDuration} from "../util";
 import {SchedulerModule} from "./scheduler";
 import {Duration} from "moment";
 import {SettingsConfig} from "./settings.skip";
+import {UserSettingsModule} from "./usersettings";
 
 export type PunishmentRoleType = "mute" | "quarantine";
 
@@ -74,16 +75,18 @@ const settingsConfig: SettingsConfig = {
 export class ModerationModule extends Module {
     private audit: AuditModule;
     private scheduler: SchedulerModule;
+    private usettings: UserSettingsModule;
     private roles: Map<PunishmentRoleType, Role>;
 
     constructor(bot: Bot) {
-        super(bot, "moderation", ["audit", "scheduler"], settingsConfig);
+        super(bot, "moderation", ["audit", "scheduler", "usersettings"], settingsConfig);
         this.roles = new Map<PunishmentRoleType, Role>();
     }
 
     public async initialize() {
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
+        this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
 
         for (let i = 0; i < PunishmentRoles.length; i++) {
             let pRole = PunishmentRoles[i];
@@ -119,8 +122,11 @@ export class ModerationModule extends Module {
         if (name === "UNPUNISH") {
             const {type, targetID}: {type: PunishmentRoleType, targetID: Snowflake}
                 = JSON.parse(payload);
-            await this.doUnpunish(type, targetID);
-            if (this.bot.guild.members.cache.has(targetID)) {
+            const punishment = await this.doUnpunish(type, targetID);
+            if (this.bot.guild.members.cache.has(targetID)
+                && (punishment.initiatorID !== punishment.userID
+                || (await this.usettings.get(targetID,
+                    "moderation.disableselfnotification")) !== "true")) {
                 this.bot.guild.members.cache.get(targetID).send(new MessageEmbed()
                     .setDescription(`Your ${type} in the UW discord has ended`)
                     .setColor(this.bot.displayColor()))

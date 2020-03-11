@@ -8,7 +8,14 @@ const namespaceRoot = "internal-usersettings-users_public";
 
 export const AllSettings: SettingsConfig = {
     "anon.disablemessages": {
-        description: "Don't allow messages to your anon user"
+        description: "A boolean (true or false). If true, don't allow messages to your anon" +
+            " user. There will be no notification to the sender or you that a message was" +
+            " blocked, you will simply never receive it."
+    },
+    "moderation.disableselfnotification": {
+        description: "A boolean (true or false). If true, you will not be notified when self" +
+            " punishments (self bans or self mutes) end. Does not apply to mutes or other" +
+            " punishments given by moderators."
     }
 };
 
@@ -44,7 +51,7 @@ export class UserSettingsModule extends Module {
             all.push({
                 key: key,
                 value: setting.value,
-                description: record == null ? "_Unknown" : record.description
+                description: record == null ? "_Unknown_" : record.description
             });
             keys.add(key);
         }

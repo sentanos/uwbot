@@ -246,9 +246,13 @@ export const parseDuration = (durationInput: string): Duration => {
         if (!isNaN(num)) {
             const suffix = matches[2];
             if (unitMap.has(suffix)) {
-                return moment.duration({
+                const d = moment.duration({
                     [unitMap.get(suffix).name]: num
                 });
+                if (d.asYears() > 2000) {
+                    throw new Error("SAFE: Duration cannot be over 2000 years");
+                }
+                return d;
             }
         }
     }

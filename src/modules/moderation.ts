@@ -99,11 +99,29 @@ export class ModerationModule extends Module {
             this.roles.set(pRole.name, role);
         }
 
-        this.listen("channelCreate", this.channelCreate.bind(this));
-        this.listen("guildMemberAdd", this.guildMemberAdd.bind(this));
-        this.listen("typingStart", this.typingStart.bind(this));
-        this.listen("message", this.onMessage.bind(this));
-        this.bot.guild.channels.cache.each((channel: GuildChannel) => {
+        let channels = this.bot.guild.channels.cache;
+
+        // Quarantine channel
+        const part = channels.partition(channel => channel.name !== "quarantined");
+        channels = part[0];
+        let quarantineChannel;
+        if (part[1].size === 0) {
+            quarantineChannel = await this.bot.guild.channels.create("quarantined");
+        } else {
+            quarantineChannel = part[1].first();
+        }
+        // Deny @everyone
+        await quarantineChannel.updateOverwrite(this.bot.guild.id, {
+            VIEW_CHANNEL: false,
+            SEND_MESSAGES: false
+        });
+        // Allow quarantine role to view only
+        await quarantineChannel.updateOverwrite(this.roles.get("quarantine"), {
+            VIEW_CHANNEL: true
+        });
+
+        channels.each((channel: GuildChannel) => {
+            console.log(`Perform ${channel.name}`);
             this.updatePermissions(channel)
                 .catch((err) => {
                     console.error("MODERATION: Error updating muted role permissions for channel " +
@@ -116,6 +134,11 @@ export class ModerationModule extends Module {
                     console.error("MODERATION: Error checking punishment for " + p.userID + ": " + err.stack);
                 })
         });
+
+        this.listen("channelCreate", this.channelCreate.bind(this));
+        this.listen("guildMemberAdd", this.guildMemberAdd.bind(this));
+        this.listen("typingStart", this.typingStart.bind(this));
+        this.listen("message", this.onMessage.bind(this));
     }
 
     public async event(name: string, payload: string): Promise<void> {

@@ -121,7 +121,6 @@ export class ModerationModule extends Module {
         });
 
         channels.each((channel: GuildChannel) => {
-            console.log(`Perform ${channel.name}`);
             this.updatePermissions(channel)
                 .catch((err) => {
                     console.error("MODERATION: Error updating muted role permissions for channel " +

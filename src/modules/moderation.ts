@@ -161,7 +161,7 @@ export class ModerationModule extends Module {
                 duration);
             target.send(new MessageEmbed()
                 .setDescription(`You have been ${type}d in the UW discord by ${moderator.tag} for ` +
-                    `${formatDuration(duration)}. Reason: ${reason}\n\n[Jump to mute]` +
+                    `${formatDuration(duration)}. Reason: ${reason}\n\n[Jump to ${type}]` +
                     `(${commandMessage.url})`)
                 .setColor(this.bot.displayColor()))
                 .catch((err) => {

@@ -104,21 +104,24 @@ export class ModerationModule extends Module {
         // Quarantine channel
         const part = channels.partition(channel => channel.name !== "quarantined");
         channels = part[0];
-        let quarantineChannel;
         if (part[1].size === 0) {
-            quarantineChannel = await this.bot.guild.channels.create("quarantined");
-        } else {
-            quarantineChannel = part[1].first();
+            await this.bot.guild.channels.create("quarantined", {
+                permissionOverwrites: [
+                    {
+                        id: this.bot.client.user.id,
+                        allow: ["MANAGE_CHANNELS"]
+                    },
+                    {
+                        id: this.bot.guild.roles.everyone.id,
+                        deny: ["VIEW_CHANNEL", "SEND_MESSAGES"]
+                    },
+                    {
+                        id: this.roles.get("quarantine").id,
+                        allow: ["VIEW_CHANNEL"]
+                    }
+                ]
+            });
         }
-        // Deny @everyone
-        await quarantineChannel.updateOverwrite(this.bot.guild.id, {
-            VIEW_CHANNEL: false,
-            SEND_MESSAGES: false
-        });
-        // Allow quarantine role to view only
-        await quarantineChannel.updateOverwrite(this.roles.get("quarantine"), {
-            VIEW_CHANNEL: true
-        });
 
         channels.each((channel: GuildChannel) => {
             this.updatePermissions(channel)

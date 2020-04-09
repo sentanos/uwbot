@@ -1,6 +1,6 @@
 {
   "guild": "enter_guild_id_here",
   "client": {
-    "partials": ["MESSAGE"]
+    "partials": ["MESSAGE", "REACTION"]
   }
 }

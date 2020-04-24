@@ -101,7 +101,7 @@ export class XPModule extends Module {
         await this.exclude.initialize();
         this.listen("message", this.onMessage.bind(this));
         this.interval(this.checkDecay.bind(this),
-            this.settingsN("decayInterval") * 1000);
+            this.settingsN("checkInterval") * 1000);
     }
 
     public static levelFromXp(xp: XP): number {

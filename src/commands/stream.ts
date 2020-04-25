@@ -25,7 +25,6 @@ class RequiresStream extends Command {
     }
 
     activateStream(message: Message, data: StreamData): Promise<Message> {
-        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
         this.stream.addStreamer(data);
         return message.channel.send(new MessageEmbed()
             .setColor(this.bot.displayColor())
@@ -33,7 +32,7 @@ class RequiresStream extends Command {
             .setDescription("All messages you send through DMs (excluding commands) will be" +
                 " automatically sent as an anonymous message. All messages sent in the anonymous" +
                 " channel will be sent back to you through DMs. To end streaming mode use the" +
-                " command " + handler.settings("prefix") + "stream end"));
+                " command " + this.handler.commandTip("stream end")));
     }
 }
 

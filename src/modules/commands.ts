@@ -160,6 +160,17 @@ export class CommandsModule extends Module {
         }
     }
 
+    // Generates an example call for a command given its names and argument names. For example, with
+    // the prefix ">" and the separator " ", commandTip("xph", "user", "date") would generate
+    // ">xph <user> <date>"
+    public commandTip(name: string, ...args: string[]) {
+        let res = this.settings("prefix") + name;
+        for (let i = 0; i < args.length; i++) {
+            res += `${this.settings("separator")}<${args[i]}>`;
+        }
+        return res;
+    }
+
     // Given a GuildMember _of the bot guild_, checks if they have the given permission. Returns
     // true if they do and false if they do not.
     public checkPermission(user: GuildMember, permission: Permission): boolean {
@@ -294,6 +305,8 @@ export abstract class Command {
     public readonly names: string[];
     // A reference to the bot the command belongs to
     public readonly bot: Bot;
+    // A reference to the commands module for this command
+    protected readonly handler: CommandsModule;
 
     // For descriptions of the below fields, refer to CommandConfig
 
@@ -304,6 +317,7 @@ export abstract class Command {
 
     protected constructor(bot: Bot, config: CommandConfig) {
         this.bot = bot;
+        this.handler = bot.getModule("commands") as CommandsModule;
         this.names = config.names;
         this.usages = config.usages;
         this.permission = config.permission;
@@ -316,8 +330,6 @@ export abstract class Command {
 
     // run runs the command and performs all command-related checks
     async run(message?: Message, ...args: string[]): Promise<Message | void> {
-        const handler: CommandsModule = this.bot.getModule("commands") as CommandsModule;
-
         let resolved : GuildMember | void;
         let member: GuildMember;
         const user = message.author;
@@ -328,21 +340,21 @@ export abstract class Command {
             throw new Error("SAFE: You must be a member of the UW discord to run commands")
         }
 
-        if (!(await handler.checkAvailability(message, this.availability))) {
+        if (!(await this.handler.checkAvailability(message, this.availability))) {
             if (this.availability === Availability.ChatOnly) {
                 throw new Error("SAFE: You may only use that command from DMs");
             } else if (this.availability === Availability.GuildOnly) {
                 throw new Error("SAFE: You may only use that command from a guild");
             } else if (this.availability === Availability.WhitelistedGuildChannelsOnly) {
                 await message.author.send("Error: You may only use that command from specific" +
-                    " guild channels. Use \"" + handler.settings("prefix") + "whitelist get\" to" +
-                    " get a list of these channels.");
+                    " guild channels. Use \"" + this.handler.settings("prefix") + "whitelist" +
+                    " get\" to get a list of these channels.");
                 return;
             } else {
                 throw new Error("SAFE: Command is unavailable in current context");
             }
         }
-        if (!handler.checkPermission(member, this.permission)) {
+        if (!this.handler.checkPermission(member, this.permission)) {
             throw new Error("SAFE: You do not have permission to run that command");
         }
 

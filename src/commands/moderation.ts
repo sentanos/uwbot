@@ -106,8 +106,7 @@ class GenericSelfPunish extends RequiresModeration {
         if (punishment instanceof Punishments) {
             throw new Error(`SAFE: You are supposed to be ${punishment.type}d... how did you do that?`);
         }
-        const duration = parseDuration((this.bot.getModule("commands") as CommandsModule)
-            .getRawContent(message.content));
+        const duration = parseDuration(this.handler.getRawContent(message.content));
         await this.mod.punish(this.type, message.author, message.author, `Self ${this.type}`,
             duration, message);
         return message.channel.send(new MessageEmbed()

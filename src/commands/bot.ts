@@ -11,17 +11,10 @@ import {Bot} from "../bot";
 import {WhitelistModule} from "../modules/whitelist";
 
 class RequiresCommand extends Command {
-    protected handler: CommandsModule;
-
     constructor(bot: Bot, config: PartialCommandConfig) {
         let withCategory = config as CommandConfig;
         withCategory.category = "bot";
         super(bot, withCategory);
-    }
-
-    async run(message?: Message, ...args: string[]): Promise<Message | void> {
-        this.handler = this.bot.getModule("commands") as CommandsModule;
-        return super.run(message, ...args);
     }
 
     async sendCommandsMessage(sourceMessage: Message, newMessage: MessageEmbed):
@@ -81,8 +74,7 @@ export class Commands extends RequiresCommand {
                 categories.add(command.category);
             });
             embed.setDescription(alphabetical([...categories]).join("\n"));
-            embed.setFooter(`Use ${this.handler.settings("prefix")}cmds`
-                + `${this.handler.settings("separator")}<category> to get commands in a category`);
+            embed.setFooter(`Use ${this.handler.commandTip("cmds", "category")} to get commands in a category`);
         } else {
             let primaryNames = new Set<string>();
             this.handler.commands.forEach((command: Command) => {

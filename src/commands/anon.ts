@@ -132,8 +132,7 @@ export class Timeout extends RequiresAnon {
     }
 
     async exec(message: Message, messageID: string, _: string): Promise<Message> {
-        const arg = (this.bot.getModule("commands") as CommandsModule)
-            .getRawContent(message.content, 1);
+        const arg = this.handler.getRawContent(message.content, 1);
         const duration = parseDuration(arg);
         const resp = await this.anon.doBlacklist(messageID, message.author, duration);
         return message.channel.send(

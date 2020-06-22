@@ -406,7 +406,11 @@ export class AnonModule extends Module {
             handler.getRawContent(message.content, offset - 1);
         const cleaned: string = content.toLowerCase().replace(/[^a-z]/g, "");
         for (let i = 0; i < this.filter.length; i++) {
-            if (cleaned.includes(this.filter[i])) {
+            const filtered = this.filter[i];
+            if ((filtered.length <= 3
+                && content.toLowerCase().includes(filtered))
+                || (filtered.length > 3
+                && cleaned.includes(filtered))) {
                 throw new Error("Filtered words")
             }
         }

@@ -179,7 +179,6 @@ export class ModerationModule extends Module {
 
     public async punish(type: PunishmentRoleType, moderator: User, target: User, reason: string,
                         duration: Duration, commandMessage: Message): Promise<PreviousPunishment | void> {
-        await this.clearJobs(`UNPUNISH`, type, target.id);
         const res = await this.doPunish(type, moderator.id, target.id, duration.asSeconds());
         if (moderator.id !== target.id) {
             await this.audit.genericPunishment(type, moderator, target, reason, commandMessage,
@@ -199,6 +198,10 @@ export class ModerationModule extends Module {
     // If a previous punishment exists, completely replaces it and cancels unpunishment jobs
     private async doPunish(type: PunishmentRoleType, initiatorID: Snowflake, targetID: Snowflake,
                            interval: number): Promise<PreviousPunishment | void> {
+        if (interval === 0) {
+            throw new Error("SAFE: Interval must be greater than 0 seconds");
+        }
+        await this.clearJobs(`UNPUNISH`, type, targetID);
         await this.setPunishmentRole(type, targetID, true);
         let prev: PreviousPunishment | void = null;
         let punishment: Punishments | void = await this.getPunishment(targetID);

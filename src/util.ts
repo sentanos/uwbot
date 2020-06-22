@@ -102,16 +102,10 @@ export const dateAfter = (duration: Duration): Date => {
     return dateAfterSeconds(duration.asSeconds());
 };
 
-// Returns the given array sorted in alphabetical order (a-z)
+// Returns the given array sorted in case-insensitive alphabetical order (a-z)
 export const alphabetical = (arr: string[]): string[] => {
     return arr.sort((a: string, b: string): number => {
-        if (a < b) {
-            return -1;
-        } else if (a > b) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return a.toLowerCase().localeCompare(b.toLowerCase());
     });
 };
 
@@ -290,7 +284,7 @@ export const formatDuration = (interval: moment.Duration): string => {
         }
     }
     if (parts.length === 0) {
-        throw new Error("Invalid input");
+        return "0 seconds";
     } else if (parts.length === 1) {
         return parts[0];
     } else {
@@ -317,29 +311,54 @@ export const timeDiff = (t1: Date, t2: Date): number => {
     return t1.getTime() - t2.getTime();
 };
 
-// Returns the nth index of substring within string
-export const getNthIndex = (str: string, substr: string, n: number): number => {
-    let i = -1;
+// Returns the nth index of substring within string, ignoring when the substring is enclosed in
+// quotes, or -1 if the number of substrings is less substrings than n.
+export const getNthQuotedIndex = (str: string, substr: string, n: number): number => {
+    let substrings = 0;
+    let quoting = false;
 
-    while (n-- && i++ < str.length) {
-        i = str.indexOf(substr, i);
-        if (i < 0) break;
+    let i = 0;
+    while (i < str.length) {
+        const char = str.charAt(i);
+        if (char === '"') {
+            quoting = !quoting;
+            i++;
+        } else if (!quoting && str.substring(i, i + substr.length) === substr) {
+            substrings++;
+            if (substrings === n) {
+                return i;
+            }
+            i += substr.length;
+        } else {
+            i++;
+        }
     }
+    return -1;
+}
 
-    return i;
-};
+// Same as getNthQuotedIndex, but n is from the end
+export const getLastNthQuotedIndex = (str: string, substr: string, n: number): number => {
+    let substrings = 0;
+    let quoting = false;
 
-// Returns the nth index of substring within string from the back
-export const getLastNthIndex = (str: string, substr: string, n: number): number => {
-    let i = str.length;
-
-    while (n-- && i-- <= str.length) {
-        i = str.lastIndexOf(substr, i);
-        if (i < 0) break;
+    let i = str.length - 1;
+    while (i >= 0) {
+        const char = str.charAt(i);
+        if (char === '"') {
+            quoting = !quoting;
+            i--;
+        } else if (!quoting && str.substring(i - substr.length + 1, i + 1) === substr) {
+            substrings++;
+            if (substrings === n) {
+                return i;
+            }
+            i -= substr.length;
+        } else {
+            i--;
+        }
     }
-
-    return i;
-};
+    return -1;
+}
 
 // Fisher-Yates Shuffle
 // From https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
@@ -356,6 +375,37 @@ export const shuffle = (array: any[]): void => {
         array[randomIndex] = temporaryValue;
     }
 };
+
+// Splits the given string by the given delim[iter] but ignores the delimiter in quoted portions.
+// For example: splitIgnoreQuotes('hello there "great world"', " ")
+// is parsed to ["hello", "there", "great world"]
+export const splitIgnoreQuotes = (str: string, delim: string): string[] => {
+    let parts = [];
+    let quoting = false;
+    let part = "";
+
+    let i = 0;
+    while (i < str.length) {
+        const char = str.charAt(i);
+        if (char === '"') {
+            quoting = !quoting;
+            i++;
+        } else if (!quoting && str.substring(i, i + delim.length) === delim) {
+            parts.push(part);
+            i += delim.length;
+            part = "";
+        } else {
+            part += char;
+            i++;
+        }
+    }
+
+    if (part !== "") {
+        parts.push(part);
+    }
+
+    return parts;
+}
 
 // Check if the embeds are equal excluding fields, files, and description.
 export const embedMetaEquals = (a: MessageEmbed, b: MessageEmbed): boolean =>

@@ -1,7 +1,12 @@
 import {GuildMember, Message} from "discord.js";
 import {Bot} from "../bot";
 import {Module} from "../module";
-import {CaseInsensitiveTernaryTrie, getLastNthIndex, getNthIndex} from "../util";
+import {
+    CaseInsensitiveTernaryTrie,
+    getLastNthQuotedIndex,
+    getNthQuotedIndex,
+    splitIgnoreQuotes
+} from "../util";
 import {WhitelistModule} from "./whitelist";
 import {SettingsConfig} from "./settings.skip";
 
@@ -35,6 +40,7 @@ export type CommandCategory =
     | "settings"
     | "remind"
     | "moderation"
+    | "ranks"
 
 export type PartialCommandConfig = {
     names: string[],
@@ -174,7 +180,6 @@ export class CommandsModule extends Module {
     // Given a GuildMember _of the bot guild_, checks if they have the given permission. Returns
     // true if they do and false if they do not.
     public checkPermission(user: GuildMember, permission: Permission): boolean {
-        // noinspection FallThroughInSwitchStatementJS
         switch(permission) {
             case Permission.None:
                 return true;
@@ -265,9 +270,9 @@ export class CommandsModule extends Module {
             this.settings("prefix").length + this.settings("separator").length);
         let idx;
         if (offsetIndex >= 0) {
-            idx = getNthIndex(afterCommand, this.settings("separator"), offsetIndex);
+            idx = getNthQuotedIndex(afterCommand, this.settings("separator"), offsetIndex);
         } else {
-            idx = getLastNthIndex(afterCommand, this.settings("separator"), offsetIndex * -1);
+            idx = getLastNthQuotedIndex(afterCommand, this.settings("separator"), offsetIndex * -1);
         }
         if (idx === -1) {
             return afterCommand;
@@ -288,8 +293,11 @@ export class CommandsModule extends Module {
             return null;
         }
         const command = maybe as CommandAndAlias;
-        const args = content.substring(command.alias.length + this.settings("prefix").length)
-            .split(this.settings("separator"));
+        const args = splitIgnoreQuotes(
+            content.substring(command.alias.length + this.settings("prefix").length),
+            this.settings("separator")
+        );
+        // This looks weird but is actually necessary to deal with a lot of edge cases
         args.shift();
         return {
             command: command.command,

@@ -107,7 +107,7 @@ export class RanksCommand extends RequiresRanks {
                 ["Show all ranks in a category or show all ranks grouped by category or show all" +
                     " ranks not grouped"]: ["category/all/ungrouped"],
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.None,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -187,7 +187,7 @@ export class RenameCategory extends RequiresRanks {
             usages: {
                 "Rename a category": ["oldName", "newName"],
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -207,7 +207,7 @@ export class DeleteCategory extends RequiresRanks {
             usages: {
                 "Deletes the given category": ["category"],
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -229,7 +229,7 @@ export class CreateRank extends RequiresRanks {
                 "Create a new rank and corresponding role in the given category":
                     ["name", "category"],
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -259,7 +259,7 @@ export class AddRank extends RequiresRanks {
                 "Create a rank from many existing roles and all of them to the given category":
                     ["name,name,name,...", "category"]
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -288,7 +288,7 @@ export class DeleteRank extends RequiresRanks {
                 "Delete a rank (note: does not delete the role)": ["rank"],
                 "Delete many ranks (note: does not delete the roles)": ["rank,rank,rank,..."],
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -314,7 +314,7 @@ export class AssignCategory extends RequiresRanks {
                 "Add the given rank to the given category": ["rank", "category"],
                 "Add multiple ranks to a category": ["rank,rank,rank,...", "category"]
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }
@@ -340,7 +340,7 @@ export class UnassignCategory extends RequiresRanks {
             usages: {
                 "Remove the given rank from the given category": ["rank", "category"]
             },
-            permission: Permission.VerifiedGuildMember,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.WhitelistedGuildChannelsOnly
         })
     }

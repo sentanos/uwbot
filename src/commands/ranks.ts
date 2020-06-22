@@ -207,7 +207,7 @@ export class RenameCategory extends RequiresRanks {
 export class DeleteCategory extends RequiresRanks {
     constructor(bot: Bot) {
         super(bot, {
-            names: ["deletecategory", "deletecat"],
+            names: ["deletecategory", "delcat"],
             usages: {
                 "Deletes the given category": ["category"],
             },

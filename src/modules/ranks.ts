@@ -123,7 +123,13 @@ export class RanksModule extends Module {
 
     // Given a role, adds it to the rank list
     // Throws error if the given role already exists as a rank
+    //
+    // Privileged roles (with KICK_MEMBERS permission) cannot be added
     private async addRankFromRole(role: Role, categoryName: string = "Uncategorized"): Promise<RankAndCategory> {
+        if (role.permissions.has("KICK_MEMBERS")) {
+            throw new Error("SAFE: Privileged roles cannot be added");
+        }
+
         const testRank: Ranks | null = await Ranks.findOne({where: {
             roleID: role.id
         }});

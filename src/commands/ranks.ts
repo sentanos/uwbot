@@ -272,7 +272,7 @@ export class AddRank extends RequiresRanks {
 
         let desc: string = getReadableNames("Added", res.successful.map(r => r.rankName));
         if (category != null) {
-            desc += " with category " + res.category;
+            desc += " with category " + res.category.categoryName;
         }
         return message.channel.send(new MessageEmbed()
             .setDescription(desc)

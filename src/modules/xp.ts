@@ -9,7 +9,7 @@ import {Module} from "../module";
 import {Bot} from "../bot";
 import {PersistentChannelList, PersistentChannelListConfig, timeDiff} from "../util";
 import {Xp} from "../database/models/xp";
-import {Sequelize, Op, FindOptions} from "sequelize";
+import {Sequelize, Op, FindOptions, Transaction} from "sequelize";
 import {XpLogs} from "../database/models/xpLogs";
 import {Availability, Permission} from "./commands";
 import {SettingsConfig} from "./settings.skip";
@@ -323,9 +323,7 @@ export class XPModule extends Module {
     private async addBlockXP(user: Snowflake, message?: Message): Promise<boolean | void> {
         const add = 1;
         let added = false;
-        // Types definition is wrong here because it requires a type that cannot be imported
-        // @ts-ignore
-        return this.DB.transaction({type: 'IMMEDIATE'}, (t) => {
+        return this.DB.transaction({type: Transaction.TYPES.IMMEDIATE}, (t) => {
             return Xp.findByPk(user, {transaction: t}).then((userXp) => {
                 if (userXp == null) {
                     added = true;

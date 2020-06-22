@@ -117,7 +117,11 @@ export class RanksCommand extends RequiresRanks {
         const category = this.handler.getRawContent(message.content);
         if (category === "") {
             const categories = await this.ranks.getCategories();
-            const desc = listOrNone(categories.map((c) => c.categoryName));
+            let names = categories.map(c => c.categoryName);
+            if (names.length > 0) {
+                names.unshift("All");
+            }
+            const desc = listOrNone(names);
             return message.channel.send(new MessageEmbed()
                 .setTitle("Categories")
                 .setDescription(desc)

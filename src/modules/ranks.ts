@@ -67,14 +67,15 @@ export class RanksModule extends Module {
         });
     }
 
-    public async renameCategoryByName(oldName: string, newName: string): Promise<{old: RankCategories, new: RankCategories}> {
+    public async renameCategoryByName(oldName: string, newName: string): Promise<{oldName: string, newName: string}> {
         const oldCategory = await this.getCategory(oldName);
+        const old = oldCategory.categoryName;
         const newCategory = await oldCategory.update({
             categoryName: newName
         });
         return {
-            old: oldCategory,
-            new: newCategory
+            oldName: old,
+            newName: newCategory.categoryName
         };
     }
 

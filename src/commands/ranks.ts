@@ -195,7 +195,7 @@ export class RenameCategory extends RequiresRanks {
     async exec(message: Message, oldName: string, newName: string) {
         const category = await this.ranks.renameCategoryByName(oldName, newName);
         return message.channel.send(new MessageEmbed()
-            .setDescription("Renamed category " + category.new.categoryName + " to " + category.old.categoryName)
+            .setDescription("Renamed category " + category.oldName + " to " + category.newName)
             .setColor(this.bot.displayColor()));
     }
 }

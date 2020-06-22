@@ -125,7 +125,7 @@ export class XPUpdateAll extends RequiresXP {
                 ["Bring all users up to date for XP rewards. Use only when options have had" +
                     " major changes"]: []
             },
-            permission: Permission.UserKick,
+            permission: Permission.UserKickOrMaintainer,
             availability: Availability.GuildOnly
         });
     }

@@ -270,6 +270,12 @@ export class AddRank extends RequiresRanks {
 
         await sendErrorMessages("adding", message.channel, res.errors);
 
+        if (res.successful.length === 0) {
+            return message.channel.send(new MessageEmbed()
+                .setDescription("No ranks were affected")
+                .setColor("RED"));
+        }
+
         let desc: string = getReadableNames("Added", res.successful.map(r => r.rankName));
         if (category != null) {
             desc += " with category " + res.category.categoryName;
@@ -299,6 +305,12 @@ export class DeleteRank extends RequiresRanks {
 
         await sendErrorMessages("deleting", message.channel, res.errors);
 
+        if (res.successful.length === 0) {
+            return message.channel.send(new MessageEmbed()
+                .setDescription("No ranks were affected")
+                .setColor("RED"));
+        }
+
         let desc: string = getReadableNames("Deleted", res.successful.map(r => r.rankName));
         return message.channel.send(new MessageEmbed()
             .setDescription(desc)
@@ -325,6 +337,12 @@ export class AssignCategory extends RequiresRanks {
 
         await sendErrorMessages("adding", message.channel, res.errors, "to category");
 
+        if (res.successful.length === 0) {
+            return message.channel.send(new MessageEmbed()
+                .setDescription("No ranks were affected")
+                .setColor("RED"));
+        }
+
         let desc: string = getReadableNames("Added", res.successful.map(r => r.rankName));
         desc += " to category " + res.category.categoryName;
         return message.channel.send(new MessageEmbed()
@@ -350,6 +368,12 @@ export class UnassignCategory extends RequiresRanks {
         const res = await attemptMultipleWithCategory(names, category, this.ranks.removeRankFromCategory.bind(this.ranks));
 
         await sendErrorMessages("removing", message.channel, res.errors, "from category");
+
+        if (res.successful.length === 0) {
+            return message.channel.send(new MessageEmbed()
+                .setDescription("No ranks were affected")
+                .setColor("RED"));
+        }
 
         let desc: string = getReadableNames("Removed", res.successful.map(r => r.rankName));
         desc += " from category " + res.category.categoryName;

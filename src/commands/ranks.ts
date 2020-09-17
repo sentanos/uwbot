@@ -128,7 +128,7 @@ export class RanksCommand extends RequiresRanks {
                 .setFooter("Use " + this.handler.commandTip("ranks", "category") +
                     " to show all ranks in a category")
                 .setColor(this.bot.displayColor()));
-        } else if (category === "all") {
+        } else if (category.toLowerCase() === "all") {
             const categories = await this.ranks.getCategories();
             const ranksByCategory: Map<string, string[]> = new Map();
             let jobs = [];

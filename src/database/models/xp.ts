@@ -7,6 +7,7 @@ export class Xp extends Model {
     public blockXp!: number;
     public lastMessage!: Date;
     public lastDecay!: Date;
+    public lastReward!: Date;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -36,6 +37,11 @@ export function init(sequelize: Sequelize): void {
             allowNull: false
         },
         lastDecay: {
+            type: DataTypes.DATE,
+            defaultValue: DataTypes.NOW,
+            allowNull: false
+        },
+        lastReward: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW,
             allowNull: false

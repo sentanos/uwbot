@@ -135,16 +135,13 @@ export class XPModule extends Module {
     private async checkReward(member: GuildMember): Promise<boolean> {
         const xp: XP = await this.getXP(member.id);
         const rolling: XP = await this.getRollingXP(member.id);
-        const lastReward: Date = await this.getLastRewardTime(member.id);
-        const isRegular: boolean = (await member.roles.cache.get(this.settings("reward"))) == null;
+        const isRegular: boolean = (await member.roles.cache.get(this.settings("reward"))) != null;
         if (isRegular) {
             return (xp >= this.settingsN("lowerRewardThreshold") &&
-                rolling >= this.settingsN("lowerRollingRewardThreshold")) ||
-                timeDiff(new Date(), lastReward) < this.settingsN("rewardInterval") * 1000;
+                rolling >= this.settingsN("lowerRollingRewardThreshold"));
         } else {
             return xp >= this.settingsN("upperRewardThreshold") &&
-                rolling >= this.settingsN("upperRollingRewardThreshold") &&
-                timeDiff(new Date(), lastReward) >= this.settingsN("rewardInterval") * 1000;
+                rolling >= this.settingsN("upperRollingRewardThreshold");
         }
     }
 
@@ -184,13 +181,17 @@ export class XPModule extends Module {
             return false;
         }
         member = this.bot.guild.members.cache.get(user);
-        if (await this.checkReward(member)) {
+        const lastReward: Date = await this.getLastRewardTime(member.id);
+        const hasReward: boolean = await this.checkReward(member);
+        const canUpdateReward: boolean = timeDiff(new Date(), lastReward) >
+            this.settingsN("rewardInterval") * 1000;
+        if (hasReward && canUpdateReward) {
             if (await this.addReward(member) && notifyAdd != null) {
                 await notifyAdd.send(new MessageEmbed()
                     .setDescription(member.user.toString() + " You are now a regular!")
                     .setColor(this.bot.displayColor()));
             }
-        } else {
+        } else if (!hasReward && canUpdateReward) {
             if (await this.removeReward(member) && notifyRemove != null) {
                 await notifyRemove.send(new MessageEmbed()
                     .setDescription("You lost regular in the UW discord due to inactivity")
@@ -199,6 +200,7 @@ export class XPModule extends Module {
         }
     }
 
+    // Note: Ignores lastReward when removing
     public async updateAll(): Promise<void> {
         const rewarded = await this.bot.guild.roles.cache.get(this.settings("reward")).members.array();
         let jobs = [];

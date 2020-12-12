@@ -7,7 +7,7 @@
     "start": "NODE_ENV=production node src/index.js",
     "dev": "node src/index.js",
     "build": "babel src -d src --extensions \".ts\"",
-    "type-check": "tsc --downlevelIteration src/index.ts src/commands/*.ts src/modules/*.ts --noEmit --esModuleInterop"
+    "type-check": "tsc --downlevelIteration src/index.ts src/commands/*.ts src/modules/*.ts --noEmit --esModuleInterop --resolveJsonModule"
   },
   "author": "Froast",
   "license": "ISC",
@@ -20,8 +20,8 @@
     "sequelize": "^5.19.0",
     "sqlite3": "^4.1.0",
     "uuid": "^3.3.3",
-    "vega": "^5.9.0",
-    "vega-lite": "^4.0.0"
+    "vega": "^5.17.0",
+    "vega-lite": "^4.17.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.5.5",
@@ -33,6 +33,6 @@
     "@types/bluebird": "^3.5.27",
     "@types/node": "^12.7.2",
     "@types/validator": "^10.11.3",
-    "typescript": "^3.5.3"
+    "typescript": "^4.1.3"
   }
 }

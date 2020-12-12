@@ -41,6 +41,11 @@ const settingsConfig: SettingsConfig = {
             " decays",
         default: "86400"
     },
+    rewardInterval: {
+        description: "The minimum number of seconds between gaining and losing the reward role," +
+            " including between the user's first message and when they can gain the reward role",
+        default: "604800"
+    },
     decayXP: {
         description: "The XP removed if a user's XP decays",
         default: "6"
@@ -50,13 +55,21 @@ const settingsConfig: SettingsConfig = {
             " users",
         default: "60"
     },
-    rewardThreshold: {
+    upperRewardThreshold: {
         description: "The minimum XP required to earn the reward role",
+        default: "198"
+    },
+    lowerRewardThreshold: {
+        description: "The minimum XP required to keep the reward role",
         default: "168"
     },
-    rollingRewardThreshold: {
+    upperRollingRewardThreshold: {
         description: "The minimum rolling XP required to earn the reward role",
-        default: "5"
+        default: "15"
+    },
+    lowerRollingRewardThreshold: {
+        description: "The minimum rolling XP required to keep the reward role",
+        default: "8"
     },
     reward: {
         description: "The reward role ID"
@@ -119,16 +132,33 @@ export class XPModule extends Module {
         return "Level " + level + " (" + progress + "/" + nextLevel + ")";
     }
 
-    private async checkReward(user: Snowflake): Promise<boolean> {
-        const xp: XP = await this.getXP(user);
-        const rolling: XP = await this.getRollingXP(user);
-        return xp >= this.settingsN("rewardThreshold") && rolling >
-            this.settingsN("rollingRewardThreshold");
+    private async checkReward(member: GuildMember): Promise<boolean> {
+        const xp: XP = await this.getXP(member.id);
+        const rolling: XP = await this.getRollingXP(member.id);
+        const isRegular: boolean = (await member.roles.cache.get(this.settings("reward"))) != null;
+        if (isRegular) {
+            return (xp >= this.settingsN("lowerRewardThreshold") &&
+                rolling >= this.settingsN("lowerRollingRewardThreshold"));
+        } else {
+            return xp >= this.settingsN("upperRewardThreshold") &&
+                rolling >= this.settingsN("upperRollingRewardThreshold");
+        }
+    }
+
+    private async updateRewardTime(user: Snowflake): Promise<void> {
+        await Xp.update({
+            lastReward: new Date()
+        }, {
+            where: {
+                userID: user
+            }
+        });
     }
 
     private async addReward(member: GuildMember): Promise<boolean> {
         if (member.roles.cache.get(this.settings("reward")) == null) {
             await member.roles.add(this.settings("reward"));
+            await this.updateRewardTime(member.id);
             return true;
         }
         return false;
@@ -137,6 +167,7 @@ export class XPModule extends Module {
     private async removeReward(member: GuildMember): Promise<boolean> {
         if (member.roles.cache.get(this.settings("reward")) != null) {
             await member.roles.remove(this.settings("reward"));
+            await this.updateRewardTime(member.id);
             return true;
         }
         return false;
@@ -150,13 +181,17 @@ export class XPModule extends Module {
             return false;
         }
         member = this.bot.guild.members.cache.get(user);
-        if (await this.checkReward(user)) {
+        const lastReward: Date = await this.getLastRewardTime(member.id);
+        const hasReward: boolean = await this.checkReward(member);
+        const canUpdateReward: boolean = timeDiff(new Date(), lastReward) >
+            this.settingsN("rewardInterval") * 1000;
+        if (hasReward && canUpdateReward) {
             if (await this.addReward(member) && notifyAdd != null) {
                 await notifyAdd.send(new MessageEmbed()
                     .setDescription(member.user.toString() + " You are now a regular!")
                     .setColor(this.bot.displayColor()));
             }
-        } else {
+        } else if (!hasReward && canUpdateReward) {
             if (await this.removeReward(member) && notifyRemove != null) {
                 await notifyRemove.send(new MessageEmbed()
                     .setDescription("You lost regular in the UW discord due to inactivity")
@@ -165,12 +200,13 @@ export class XPModule extends Module {
         }
     }
 
+    // Note: Ignores lastReward when removing
     public async updateAll(): Promise<void> {
         const rewarded = await this.bot.guild.roles.cache.get(this.settings("reward")).members.array();
         let jobs = [];
         for (let i = 0; i < rewarded.length; i++) {
             jobs.push((async () => {
-                if (!(await this.checkReward(rewarded[i].id))) {
+                if (!(await this.checkReward(rewarded[i]))) {
                     await this.removeReward(rewarded[i]);
                 }
             })());
@@ -299,6 +335,15 @@ export class XPModule extends Module {
             return 0;
         } else {
             return res.totalXp;
+        }
+    }
+
+    private async getLastRewardTime(user: Snowflake): Promise<Date> {
+        const res: Xp = await Xp.findByPk(user);
+        if (res == null) {
+            return new Date();
+        } else {
+            return res.lastReward;
         }
     }
 

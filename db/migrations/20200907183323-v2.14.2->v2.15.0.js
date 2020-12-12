@@ -54,19 +54,6 @@ module.exports = {
             {
                type: Sequelize.DATE
             }, {transaction});
-         await queryInterface.addColumn(
-            "xp",
-            "createdAt",
-            {
-               type: Sequelize.DATE
-            }, {transaction});
-         await queryInterface.addColumn(
-            "xp",
-            "updatedAt",
-            {
-               type: Sequelize.DATE
-            }, {transaction});
-         // updatedAt and createdAt were already supposed to exist, but for some reason they don't
          await queryInterface.sequelize.query("UPDATE xp SET lastReward = CURRENT_TIMESTAMP," +
             " createdAt = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP",
             {transaction});

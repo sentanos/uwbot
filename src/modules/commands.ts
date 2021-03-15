@@ -150,14 +150,18 @@ export class CommandsModule extends Module {
         }
     }
 
-    // Find the command specified in content
+    // Find the command specified in content (that is, the message without the prefix)
     // Because command names may contain the command separator and may also contain the name of
     // other commands, command matching works by finding the longest command name that matches
     // the one used in content
     public findCommand(content: string):
         CommandAndAlias | void {
         let match = this.commandTrie.longestCommonPrefix(content);
-        if (match.length === 0) {
+        if (match.length === 0
+            || (match.length !== content.length
+                && content.substring(match.length,
+                   match.length + this.settings("separator").length)
+                   !== this.settings("separator"))) {
             return null;
         }
         return {

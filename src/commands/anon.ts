@@ -1,7 +1,7 @@
 import {
     Availability,
     Command,
-    CommandConfig, CommandsModule,
+    CommandConfig,
     PartialCommandConfig,
     Permission
 } from "../modules/commands";

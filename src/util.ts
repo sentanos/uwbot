@@ -463,7 +463,7 @@ export const sendAndMerge = async (channel: TextChannel | DMChannel, embed: Mess
         };
     }
     return {
-        message: await channel.send(embed, {disableMentions: "all"}),
+        message: await channel.send(embed),
         merged: false
     };
 };

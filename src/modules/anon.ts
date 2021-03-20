@@ -120,96 +120,6 @@ export class Record {
     }
 }
 
-type AnonWebhook = {
-    webhook: Webhook,
-    user: AnonUser | void,
-    alias: AnonAlias,
-    color: number
-}
-
-class WebhookHandler {
-    private readonly bot: Bot;
-    private readonly guild: Guild;
-    private readonly maxWebhooks;
-    // Map from channel ID to list of webhooks
-    // Each list is sorted with the most recently used webhooks coming first
-    private webhooks: Map<Snowflake, AnonWebhook[]>;
-
-    constructor(bot: Bot, guild: Guild, maxWebhooks: number) {
-        this.bot = bot;
-        this.guild = guild;
-        this.maxWebhooks = maxWebhooks;
-        this.webhooks = new Map();
-    }
-
-    private async initWebhooks(channelID: Snowflake): Promise<AnonWebhook[]> {
-        if (!this.guild.channels.cache.has(channelID)) {
-            throw new Error(`Channel ${channelID} not found for webhook acquisition`);
-        }
-        const channel = this.guild.channels.cache.get(channelID) as TextChannel;
-        let foundWebhooks = [];
-        const webhooks = await channel.fetchWebhooks();
-        webhooks.forEach((webhook) => {
-            if (this.isAnonWebhook(webhook)) {
-                foundWebhooks.push(webhook);
-            }
-        });
-        const additional = this.maxWebhooks - webhooks.size;
-        if (additional === 0 && foundWebhooks.length === 0) {
-            throw new Error(`Could not create webhooks: Max webhook number reached for ${channelID}`);
-        }
-        let jobs = [];
-        for (let i = 0; i < additional; i++) {
-            jobs.push(channel.createWebhook(`Anon Unfilled`, {reason: "UW Bot Anon"}));
-        }
-        return (await Promise.all(jobs)).concat(foundWebhooks).map((webhook) => {
-            return {
-                webhook: webhook,
-                user: null,
-                alias: -1,
-                color: -1
-            }
-        });
-    }
-
-    // RACE CONDITION
-    public async acquireWebhook(channelID: Snowflake, user: AnonUser): Promise<Webhook> {
-        if (!this.webhooks.has(channelID)) {
-            this.webhooks.set(channelID, await this.initWebhooks(channelID));
-        }
-        const channelHooks = this.webhooks.get(channelID);
-        const alias = user.getAlias();
-        const color = user.getColor();
-        let replace = channelHooks.length - 1;
-        for (let i = 0; i < channelHooks.length; i++) {
-            const w = channelHooks[i];
-            if (w.user === user) {
-                if (w.alias === user.getAlias()
-                    && w.color === user.getColor()) {
-                    return w.webhook;
-                }
-                replace = i;
-            }
-        }
-        const entry = channelHooks.splice(replace, 1)[0];
-        await entry.webhook.edit({
-            name: `Anon ${alias}`,
-            avatar: await AnonUser.createAvatar(color)
-        });
-        entry.user = user;
-        entry.alias = alias;
-        entry.color = color;
-        channelHooks.unshift(entry);
-        return entry.webhook;
-    }
-
-    public isAnonWebhook(webhook: Webhook): boolean {
-        return webhook.owner instanceof User
-            && webhook.owner.id === this.bot.client.user.id
-            && webhook.name.startsWith("Anon");
-    }
-}
-
 const settingsConfig: SettingsConfig = {
     maxID: {
         description: "The maximum anon ID (the minimum is always 0)",
@@ -228,10 +138,6 @@ const settingsConfig: SettingsConfig = {
         description: "The cooldown (in seconds) between ID changes",
         default: "0"
     },
-    maxWebhooks: {
-        description: "The maximum number of webhooks to allow per channel",
-        default: "10"
-    },
     mutedRoles: {
         description: "A comma-separated list of role IDs. If a user has any of these, they will" +
             " not be able to use anon",
@@ -240,12 +146,13 @@ const settingsConfig: SettingsConfig = {
 };
 
 export class AnonModule extends Module {
+    public static readonly WEBHOOK_NAME = "Anon Webhook";
     private users: Map<Snowflake, AnonUser>;
+    private webhooks: Map<Snowflake, Webhook>;
     public readonly guild: Guild;
     private readonly filter: string[];
     // Map of user IDs to message IDs
     private messageRecords: MessageRecords;
-    private webhookHandler: WebhookHandler;
     private audit: AuditModule;
     private scheduler: SchedulerModule;
     private usettings: UserSettingsModule;
@@ -258,12 +165,12 @@ export class AnonModule extends Module {
 
     public async initialize() {
         this.users = new Map<Snowflake, AnonUser>();
+        this.webhooks = new Map<Snowflake, Webhook>();
         this.messageRecords = new MessageRecords(this.settingsN("maxInactiveRecords"),
             this.settingsN("lifetime"));
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
         this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
-        this.webhookHandler = new WebhookHandler(this.bot, this.guild, this.settingsN("maxWebhooks"));
         await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
             .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
                 " I'm open source, check out my source code" +
@@ -516,20 +423,30 @@ export class AnonModule extends Module {
         return (await this.getAnonUser(message.author)).send(target, content)
     }
 
-    public async acquireWebhook(channelID: Snowflake, user: AnonUser): Promise<Webhook> {
-        return this.webhookHandler.acquireWebhook(channelID, user);
+    public async acquireWebhook(channelID: Snowflake): Promise<Webhook> {
+        if (!this.guild.channels.cache.has(channelID)) {
+            throw new Error(`Channel ${channelID} not found for webhook acquisition`);
+        }
+        if (!this.webhooks.has(channelID)) {
+            const channel = this.guild.channels.cache.get(channelID) as TextChannel;
+            const channelWebhooks = (await channel.fetchWebhooks()).array();
+            for (let i = 0; i < channelWebhooks.length; i++) {
+                const webhook = channelWebhooks[i];
+                if (this.isAnonWebhook(webhook)) {
+                    this.webhooks.set(channelID, webhook);
+                    return webhook;
+                }
+            }
+            this.webhooks.set(channelID, await (this.guild.channels.cache.get(channelID) as TextChannel)
+                .createWebhook(AnonModule.WEBHOOK_NAME));
+        }
+        return this.webhooks.get(channelID);
     }
 
-    // Clear previously created Anon webhooks
-    public async clearWebhooks(): Promise<void> {
-        const webhooks = await this.guild.fetchWebhooks();
-        let jobs = [];
-        webhooks.forEach((webhook) => {
-            if (this.webhookHandler.isAnonWebhook(webhook)) {
-                jobs.push(webhook.delete());
-            }
-        });
-        await Promise.all(jobs);
+    private isAnonWebhook(webhook: Webhook): boolean {
+        return webhook.owner instanceof User
+            && webhook.owner.id === this.bot.client.user.id
+            && webhook.name === AnonModule.WEBHOOK_NAME;
     }
 }
 
@@ -558,10 +475,6 @@ export class AnonUser {
 
     public getAlias(): AnonAlias {
         return this.anonAlias;
-    }
-
-    public getColor(): number {
-        return this.color;
     }
 
     public setAlias(alias: AnonAlias): void{
@@ -626,8 +539,11 @@ export class AnonUser {
     }
 
     public async sendWebhook(target: TextChannel, content: string) {
-        await (await this.anon.acquireWebhook(target.id, this))
-            .send(content, {disableMentions: "all"});
+        await (await this.anon.acquireWebhook(target.id))
+            .send(content, {
+                name: `Anon ${this.getAlias()}`,
+                disableMentions: "all"
+            });
     }
 
     public static async createAvatar(color: number): Promise<string> {

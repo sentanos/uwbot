@@ -6,7 +6,13 @@ import {
     Permission
 } from "../modules/commands";
 import {Bot} from "../bot";
-import {TextChannel, Message, MessageEmbed, DMChannel} from "discord.js";
+import {
+    TextChannel,
+    Message,
+    MessageEmbed,
+    DMChannel,
+    NewsChannel
+} from "discord.js";
 import {RankAndCategory, RanksModule} from "../modules/ranks";
 import {alphabetical, listOrNone} from "../util";
 import {Ranks} from "../database/models/ranks";
@@ -64,7 +70,7 @@ const attemptMultipleWithCategory = async (names: string[], category: string, fu
     }
 }
 
-const sendErrorMessages = async (verb: string, channel: TextChannel | DMChannel, errors: {rank: string, error: Error}[], categoryPart?: string): Promise<void> => {
+const sendErrorMessages = async (verb: string, channel: TextChannel | DMChannel | NewsChannel, errors: {rank: string, error: Error}[], categoryPart?: string): Promise<void> => {
     let jobs = [];
     const cat = categoryPart == null ? "" : ` ${categoryPart} `;
     for (let i = 0; i < errors.length; i++) {

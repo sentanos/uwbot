@@ -5,7 +5,9 @@ import {
     Message,
     MessageEmbed,
     TextChannel,
-    DMChannel, GuildChannel
+    DMChannel,
+    GuildChannel,
+    Webhook
 } from "discord.js"
 import {createHash} from "crypto";
 import {
@@ -30,6 +32,7 @@ import {SchedulerModule} from "./scheduler";
 import {UserSettingsModule} from "./usersettings";
 import {StreamModule} from "./stream";
 import {Duration} from "moment";
+import {createCanvas, loadImage} from "canvas";
 
 // How it works:
 //   - A record of anonymous messages and the user who sent them is kept _in memory_. Each record
@@ -165,11 +168,16 @@ export class AnonModule extends Module {
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
         this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
+        await this.clearWebhooks();
         await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
             .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
                 " I'm open source, check out my source code" +
                 " [here](https://github.com/sentanos/uwbot))")
             .setColor(this.bot.displayColor()));
+    }
+
+    public async unload() {
+        await this.clearWebhooks();
     }
 
     public async event(name: string, payload: string): Promise<void> {
@@ -416,6 +424,20 @@ export class AnonModule extends Module {
         }
         return (await this.getAnonUser(message.author)).send(target, content)
     }
+
+    // Clear previously created Anon webhooks
+    public async clearWebhooks(): Promise<void> {
+        const webhooks = await this.guild.fetchWebhooks();
+        let jobs = [];
+        webhooks.forEach((webhook) => {
+            if (webhook.owner instanceof User
+                && webhook.owner.id === this.bot.client.user.id
+                && webhook.name.startsWith("Anon")) {
+                jobs.push(webhook.delete());
+            }
+        });
+        await Promise.all(jobs);
+    }
 }
 
 export class AnonUser {
@@ -426,6 +448,7 @@ export class AnonUser {
     private lastIDChange: Date;
     private anonAlias: AnonAlias;
     private color: number;
+    private webhooks: Map<Snowflake, Webhook>;
 
     constructor(anon: AnonModule, user: User, anonAlias: AnonAlias, disableMessages: boolean) {
         this.anon = anon;
@@ -434,11 +457,13 @@ export class AnonUser {
         this.disableMessages = disableMessages;
         // this.anonID = generateUID();
         this.color = randomColor();
+        this.webhooks = new Map();
     }
 
     public setColor(color: number): void {
         this.checkMuted();
         this.color = color;
+        this.webhooks.clear();
     }
 
     public getAlias(): AnonAlias {
@@ -457,6 +482,22 @@ export class AnonUser {
         }
         this.anonAlias = alias;
         this.lastIDChange = new Date();
+        this.webhooks.clear();
+    }
+
+    private async acquireWebhook(channelID: Snowflake, alias: number, color: number): Promise<Webhook> {
+        if (this.webhooks.has(channelID)) {
+            return this.webhooks.get(channelID);
+        }
+        if (!this.anon.guild.channels.cache.has(channelID)) {
+            throw new Error(`Channel ${channelID} not found for webhook acquisition`);
+        }
+        const webhook = await (this.anon.guild.channels.cache.get(channelID) as TextChannel).createWebhook(`Anon ${alias}`, {
+            avatar: await AnonUser.createAvatar(color),
+            reason: 'UW Bot Anon'
+        });
+        this.webhooks.set(channelID, webhook);
+        return webhook;
     }
 
     private buildMessage(title: string, content: string): MessageEmbed {
@@ -476,19 +517,9 @@ export class AnonUser {
         }
     }
 
-    public async send(target: TextChannel | AnonUser, content: string) {
-        this.checkMuted();
-        let channel: TextChannel | DMChannel;
-        if (target instanceof AnonUser) {
-            if (target.disableMessages) {
-                return;
-            }
-            channel = target.user.dmChannel || await target.user.createDM();
-        } else {
-            channel = target;
-        }
+    private async sendEmbed(channel: TextChannel | DMChannel, content: string) {
         let title: string = this.anonAlias.toString();
-        if (target instanceof AnonUser) {
+        if (channel instanceof DMChannel) {
             title += " (Private Message)";
         }
         const embed = this.buildMessage(title, content);
@@ -502,5 +533,31 @@ export class AnonUser {
         } else {
             this.anon.onAnonMessage(this, res.message, embed);
         }
+    }
+
+    public async send(target: TextChannel | AnonUser, content: string) {
+        this.checkMuted();
+        if (target instanceof AnonUser) {
+            if (target.disableMessages) {
+                return;
+            }
+            await this.sendEmbed(target.user.dmChannel || await target.user.createDM(), content);
+        } else {
+            await this.sendWebhook(target, content);
+        }
+    }
+
+    public async sendWebhook(target: TextChannel, content: string) {
+        await (await this.acquireWebhook(target.id, this.anonAlias, this.color))
+            .send(content, {disableMentions: "all"});
+    }
+
+    private static async createAvatar(color: number): Promise<string> {
+        const canvas = createCanvas(128, 128);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = `#${color.toString(16)}`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(await loadImage("./user.svg"), 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL();
     }
 }

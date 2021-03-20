@@ -69,6 +69,18 @@ const settingsConfig: SettingsConfig = {
             " punished user does not have the role to begin with, they will still receive it" +
             " when the punishment is removed.",
         optional: true
+    },
+    punishMessage: {
+        description: "The message to send to users when they are punished. Use %t as a" +
+            " placeholder for the type (mute or quarantine), %d for the duration, %m for" +
+            " moderator tag, and %r for reason.",
+        default: "You have been %td in the UW discord by %m for %d. Reason: %r"
+    },
+    unpunishMessage: {
+        description: "The message to send to users when their punishment ends. Use %t as a" +
+            " placeholder for the type (mute or quarantine). If not set, no message is sent.",
+        default: "Your %t in the UW discord has ended",
+        optional: true
     }
 };
 
@@ -148,12 +160,13 @@ export class ModerationModule extends Module {
             const {type, targetID}: {type: PunishmentRoleType, targetID: Snowflake}
                 = JSON.parse(payload);
             const punishment = await this.doUnpunish(type, targetID);
-            if (this.bot.guild.members.cache.has(targetID)
+            if (this.settingsHas("unpunishMessage")
+                && this.bot.guild.members.cache.has(targetID)
                 && (punishment.initiatorID !== punishment.userID
-                || (await this.usettings.get(targetID,
+                    || (await this.usettings.get(targetID,
                     "moderation.disableselfnotification")) !== "true")) {
                 this.bot.guild.members.cache.get(targetID).send(new MessageEmbed()
-                    .setDescription(`Your ${type} in the UW discord has ended`)
+                    .setDescription(this.settings("unpunishMessage").replace("%t", type))
                     .setColor(this.bot.displayColor()))
                     .catch((err) => {
                         console.error(`Failed to send un${type} message to ${targetID}: ${err.stack}`);
@@ -180,13 +193,17 @@ export class ModerationModule extends Module {
     public async punish(type: PunishmentRoleType, moderator: User, target: User, reason: string,
                         duration: Duration, commandMessage: Message): Promise<PreviousPunishment | void> {
         const res = await this.doPunish(type, moderator.id, target.id, duration.asSeconds());
-        if (moderator.id !== target.id) {
+        if (moderator.id !== target.id) { // Do not audit log or send messages for self punishments
             await this.audit.genericPunishment(type, moderator, target, reason, commandMessage,
                 duration);
+            const message = this.settings("punishMessage")
+                .replace("%t", type)
+                .replace("%m", moderator.tag)
+                .replace("%d", formatDuration(duration))
+                .replace("%r", reason)
+                + `\n\n[Jump to ${type}](${commandMessage.url})`;
             target.send(new MessageEmbed()
-                .setDescription(`You have been ${type}d in the UW discord by ${moderator.tag} for ` +
-                    `${formatDuration(duration)}. Reason: ${reason}\n\n[Jump to ${type}]` +
-                    `(${commandMessage.url})`)
+                .setDescription(message)
                 .setColor(this.bot.displayColor()))
                 .catch((err) => {
                     console.error(`Failed to send mute message to ${target.id}: ${err.stack}`);

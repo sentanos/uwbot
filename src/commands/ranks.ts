@@ -408,17 +408,11 @@ export class Rank extends RequiresRanks {
     async exec(message: Message): Promise<Message> {
         const rankName = await this.handler.getRawContent(message.content);
         const role = await this.ranks.getRole(rankName);
-        const member = this.bot.guild.member(message.author);
-        if (member == null) {
-            throw new Error("Member not found for ranking");
-        }
         let action: string;
-        if (member.roles.cache.has(role.id)) {
-            action = "left";
-            await member.roles.remove(role);
-        } else {
+        if (await this.ranks.toggleRank(message.author, rankName)) {
             action = "joined";
-            await member.roles.add(role);
+        } else {
+            action = "left";
         }
         return message.channel.send(new MessageEmbed()
             .setDescription(`${message.author.toString()}, you ${action} ${role.name}`)

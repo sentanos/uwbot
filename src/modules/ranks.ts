@@ -396,7 +396,7 @@ export class RanksModule extends Module {
             throw new Error("Guild member not found");
         }
         const role = await this.getRole(rank);
-        if (await member.roles.cache.has(role.id)) {
+        if (!await member.roles.cache.has(role.id)) {
             await member.roles.add(role);
             return true;
         } else {

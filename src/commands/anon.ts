@@ -47,6 +47,23 @@ export class AnonCommand extends RequiresAnon {
     }
 }
 
+export class Relationships extends RequiresAnon {
+    constructor(bot) {
+        super(bot, {
+            names: ["rel", "relationships"],
+            usages: {
+                "Send an anonymous message to the #relationships channel": ["message"]
+            },
+            permission: Permission.VerifiedGuildMember,
+            availability: Availability.All
+        })
+    }
+
+    async exec(message: Message): Promise<void> {
+        return this.anon.sendAnonMessage("relationships", message);
+    }
+}
+
 export class Serious extends RequiresAnon {
     constructor(bot) {
         super(bot, {

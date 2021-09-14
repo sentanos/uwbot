@@ -100,7 +100,7 @@ export class PinModule extends Module {
             userID: user.id
         });
         pinMessageListener = async (pinMessage: Message) => {
-            if (pinMessage.system && pinMessage.type === "PINS_ADD") {
+            if (pinMessage.system && pinMessage.type === "CHANNEL_PINNED_MESSAGE") {
                 this.bot.client.off("message", pinMessageListener);
                 await pin.update({
                     systemMessageID: pinMessage.id
@@ -122,7 +122,7 @@ export class PinModule extends Module {
         if (reaction.message.guild != null
             && !reaction.message.pinned
             && reaction.emoji.name === this.settings("emoji")) {
-            return this.pin(reaction.message, user);
+            return this.pin(reaction.message as Message, user);
         }
     }
 
@@ -136,7 +136,7 @@ export class PinModule extends Module {
         if (reaction.message.guild != null
             && reaction.message.pinned
             && reaction.emoji.name === this.settings("emoji")) {
-            return this.unpin(reaction.message, user);
+            return this.unpin(reaction.message as Message, user);
         }
     }
 }

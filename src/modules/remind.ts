@@ -30,7 +30,7 @@ export class RemindModule extends Module {
                 authorID: authorID,
                 content: content,
                 reminderMessageID: reminderMessage.id,
-                context: reminderMessage.channel.type === "dm" ? "DM" : "GUILD",
+                context: reminderMessage.channel.type === "DM" ? "DM" : "GUILD",
                 channelID: reminderMessage.channel.id
             }));
     }
@@ -38,14 +38,14 @@ export class RemindModule extends Module {
     public async createReminder(commandMessage: Message, content: string, date: Date):
         Promise<Message> {
         const timeModule = this.bot.getModule("time") as TimeModule;
-        const reminder = await commandMessage.channel.send(new MessageEmbed()
+        const reminder = await commandMessage.channel.send({embeds: [new MessageEmbed()
             .setTitle("Reminder Set")
             .setDescription(`I will remind you of "${content}" on ${timeModule.formatDate(date)}.\
             React to this message with ${this.settings("emoji")} to also get this reminder.`)
             .setFooter("Reminder set for")
             .setTimestamp(date)
             .setColor(this.bot.displayColor())
-        );
+        ]});
         await reminder.react(this.settings("emoji"));
         await this.schedule(commandMessage.author.id, content, date, reminder);
         return reminder;
@@ -53,12 +53,12 @@ export class RemindModule extends Module {
 
     private async sendReminder(user: User, reminder: string, permalink: string): Promise<void> {
         try {
-            await user.send(new MessageEmbed()
+            await user.send({embeds: [new MessageEmbed()
                 .setTitle("Reminder")
                 .setDescription(`This is your reminder for: ${reminder}\n\n\
                 [Jump to reminder](${permalink})`)
                 .setColor(this.bot.displayColor())
-            )
+            ]})
         } catch (err) {
             if (err.message !== "Cannot send messages to this user") {
                 throw err;
@@ -91,11 +91,11 @@ export class RemindModule extends Module {
             if (reminder.context !== "DM"
                 && message.reactions.cache.has(this.settings("emoji"))) {
                 const targets = (await message.reactions.cache.get(this.settings("emoji"))
-                    .users.fetch()).array();
-                for (let i = 0; i < targets.length; i++) {
-                    if (targets[i].id !== this.bot.client.user.id
-                        && targets[i].id !== reminder.authorID) {
-                        jobs.push(this.sendReminder(targets[i], reminder.content, message.url));
+                    .users.fetch()).values();
+                for (const user of targets) {
+                    if (user.id !== this.bot.client.user.id
+                        && user.id !== reminder.authorID) {
+                        jobs.push(this.sendReminder(user, reminder.content, message.url));
                     }
                 }
             }

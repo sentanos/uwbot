@@ -55,7 +55,7 @@ export class UserSettings extends RequiresUserSettings {
                 embed.addField(`${setting.key}: ${val}`, setting.description);
             }
         }
-        return message.channel.send(embed);
+        return message.channel.send({embeds: [embed]});
     }
 }
 
@@ -76,10 +76,11 @@ export class UserSettingsGet extends RequiresUserSettings {
             throw new Error("SAFE: Setting does not exist");
         }
         const value: string = await this.usettings.get(message.author.id, key);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(key)
             .setDescription(value === "" ? "_Not set_" : value)
-            .setColor(this.bot.displayColor()))
+            .setColor(this.bot.displayColor())
+        ]})
     }
 }
 
@@ -108,10 +109,11 @@ export class UserSettingsSet extends RequiresUserSettings {
         }
         value = value.replace(/<space>/g, " ");
         await this.usettings.set(message.author.id, key, value);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(key)
             .setDescription(value)
-            .setColor(this.bot.displayColor()))
+            .setColor(this.bot.displayColor())
+        ]})
     }
 }
 

@@ -187,27 +187,29 @@ export class XPModule extends Module {
             this.settingsN("rewardInterval") * 1000;
         if (hasReward && canUpdateReward) {
             if (await this.addReward(member) && notifyAdd != null) {
-                await notifyAdd.send(new MessageEmbed()
+                await notifyAdd.send({embeds: [new MessageEmbed()
                     .setDescription(member.user.toString() + " You are now a regular!")
-                    .setColor(this.bot.displayColor()));
+                    .setColor(this.bot.displayColor())
+                ]});
             }
         } else if (!hasReward && canUpdateReward) {
             if (await this.removeReward(member) && notifyRemove != null) {
-                await notifyRemove.send(new MessageEmbed()
+                await notifyRemove.send({embeds: [new MessageEmbed()
                     .setDescription("You lost regular in the UW discord due to inactivity")
-                    .setColor(this.bot.displayColor()));
+                    .setColor(this.bot.displayColor())
+                ]});
             }
         }
     }
 
     // Note: Ignores lastReward when removing
     public async updateAll(): Promise<void> {
-        const rewarded = await this.bot.guild.roles.cache.get(this.settings("reward")).members.array();
+        const rewarded = await this.bot.guild.roles.cache.get(this.settings("reward")).members.values();
         let jobs = [];
-        for (let i = 0; i < rewarded.length; i++) {
+        for (const member of rewarded) {
             jobs.push((async () => {
-                if (!(await this.checkReward(rewarded[i]))) {
-                    await this.removeReward(rewarded[i]);
+                if (!(await this.checkReward(member))) {
+                    await this.removeReward(member);
                 }
             })());
         }

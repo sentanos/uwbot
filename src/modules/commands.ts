@@ -200,7 +200,7 @@ export class CommandsModule extends Module {
                 }
                 // fallthrough
             case Permission.UserKick:
-                return user.hasPermission("KICK_MEMBERS");
+                return user.permissions.has("KICK_MEMBERS");
             default:
                 return false;
         }
@@ -345,7 +345,7 @@ export abstract class Command {
         let resolved : GuildMember | void;
         let member: GuildMember;
         const user = message.author;
-        resolved = this.bot.guild.member(user);
+        resolved = this.bot.guild.members.cache.get(user.id);
         if (resolved instanceof GuildMember) {
             member = resolved;
         } else {
@@ -371,8 +371,7 @@ export abstract class Command {
         }
 
         let found = false;
-        for (const key in this.usages) {
-            const usage: string[] = this.usages[key];
+        for (const usage of Object.values(this.usages)) {
             if (args.length >= usage.length) {
                 found = true;
                 break;
@@ -397,13 +396,12 @@ export abstract class Command {
 
         let res = "";
         let first = true;
-        for (const description in this.usages) {
+        for (const [description, usages] of Object.entries(this.usages)) {
             if (!first) {
                 res += "\n";
             } else {
                 first = false;
             }
-            const usages = this.usages[description];
             res += handler.settings("prefix") + this.names[0];
             if (usages.length > 0) {
                 usages.forEach((part) => {

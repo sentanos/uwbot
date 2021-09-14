@@ -7,11 +7,9 @@ import {
 } from "../modules/commands";
 import {Bot} from "../bot";
 import {
-    TextChannel,
     Message,
     MessageEmbed,
-    DMChannel,
-    NewsChannel
+    TextBasedChannels
 } from "discord.js";
 import {RankAndCategory, RanksModule} from "../modules/ranks";
 import {alphabetical, listOrNone} from "../util";
@@ -70,7 +68,7 @@ const attemptMultipleWithCategory = async (names: string[], category: string, fu
     }
 }
 
-const sendErrorMessages = async (verb: string, channel: TextChannel | DMChannel | NewsChannel, errors: {rank: string, error: Error}[], categoryPart?: string): Promise<void> => {
+const sendErrorMessages = async (verb: string, channel: TextBasedChannels, errors: {rank: string, error: Error}[], categoryPart?: string): Promise<void> => {
     let jobs = [];
     const cat = categoryPart == null ? "" : ` ${categoryPart} `;
     for (let i = 0; i < errors.length; i++) {
@@ -82,9 +80,10 @@ const sendErrorMessages = async (verb: string, channel: TextChannel | DMChannel 
             err = "Unknown error";
             console.error(`Unknown error for ${verb} rank ${categoryPart}: ${rawErr}`);
         }
-        jobs.push(channel.send(new MessageEmbed()
+        jobs.push(channel.send({embeds: [new MessageEmbed()
             .setDescription(`Error ${verb} rank ${errors[i].rank}${cat}: ${err}`)
-            .setColor("RED")));
+            .setColor("RED")
+        ]}));
     }
     await Promise.all(jobs);
 }
@@ -128,12 +127,13 @@ export class RanksCommand extends RequiresRanks {
                 names.unshift("All");
             }
             const desc = listOrNone(names);
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setTitle("Categories")
                 .setDescription(desc)
                 .setFooter("Use " + this.handler.commandTip("ranks", "category") +
                     " to show all ranks in a category")
-                .setColor(this.bot.displayColor()));
+                .setColor(this.bot.displayColor())
+            ]});
         } else if (category.toLowerCase() === "all") {
             const categories = await this.ranks.getCategories();
             const ranksByCategory: Map<string, string[]> = new Map();
@@ -171,21 +171,23 @@ export class RanksCommand extends RequiresRanks {
                     base.addField(categoryName, listOrNone(categoryRanks))
                 }
             }
-            return message.channel.send(base);
+            return message.channel.send({embeds: [base]});
         } else if (category === "ungrouped") {
             const ranks = await this.ranks.getRanks();
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setTitle("Ranks")
                 .setDescription(listOrNone(ranks.map(r => r.rankName)))
                 .setFooter(tip)
-                .setColor(this.bot.displayColor()));
+                .setColor(this.bot.displayColor())
+            ]});
         } else {
             const res = await this.ranks.getRanksInCategory(category);
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setTitle("Ranks > " + res.category)
                 .setDescription(listOrNone(alphabetical(res.ranks.map(r => r.rankName))))
                 .setFooter(tip)
-                .setColor(this.bot.displayColor()));
+                .setColor(this.bot.displayColor())
+            ]});
         }
     }
 }
@@ -204,9 +206,10 @@ export class RenameCategory extends RequiresRanks {
 
     async exec(message: Message, oldName: string, newName: string) {
         const category = await this.ranks.renameCategoryByName(oldName, newName);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription("Renamed category " + category.oldName + " to " + category.newName)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -224,9 +227,10 @@ export class DeleteCategory extends RequiresRanks {
 
     async exec(message: Message, categoryName: string) {
         const category = await this.ranks.deleteCategory(categoryName);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription("Deleted category " + category.categoryName)
-            .setColor("RED"));
+            .setColor("RED")
+        ]});
     }
 }
 
@@ -250,9 +254,10 @@ export class CreateRank extends RequiresRanks {
         if (category != null) {
             desc += " in category " + rankAndCategory.category.categoryName;
         }
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(desc)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -281,18 +286,20 @@ export class AddRank extends RequiresRanks {
         await sendErrorMessages("adding", message.channel, res.errors);
 
         if (res.successful.length === 0) {
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setDescription("No ranks were affected")
-                .setColor("RED"));
+                .setColor("RED")
+            ]});
         }
 
         let desc: string = getReadableNames("Added", res.successful.map(r => r.rankName));
         if (category != null) {
             desc += " with category " + res.category.categoryName;
         }
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(desc)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -316,15 +323,17 @@ export class DeleteRank extends RequiresRanks {
         await sendErrorMessages("deleting", message.channel, res.errors);
 
         if (res.successful.length === 0) {
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setDescription("No ranks were affected")
-                .setColor("RED"));
+                .setColor("RED")
+            ]});
         }
 
         let desc: string = getReadableNames("Deleted", res.successful.map(r => r.rankName));
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(desc)
-            .setColor("RED"));
+            .setColor("RED")
+        ]});
     }
 }
 
@@ -348,16 +357,18 @@ export class AssignCategory extends RequiresRanks {
         await sendErrorMessages("adding", message.channel, res.errors, "to category");
 
         if (res.successful.length === 0) {
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setDescription("No ranks were affected")
-                .setColor("RED"));
+                .setColor("RED")
+            ]});
         }
 
         let desc: string = getReadableNames("Added", res.successful.map(r => r.rankName));
         desc += " to category " + res.category.categoryName;
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(desc)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -380,16 +391,18 @@ export class UnassignCategory extends RequiresRanks {
         await sendErrorMessages("removing", message.channel, res.errors, "from category");
 
         if (res.successful.length === 0) {
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setDescription("No ranks were affected")
-                .setColor("RED"));
+                .setColor("RED")
+            ]});
         }
 
         let desc: string = getReadableNames("Removed", res.successful.map(r => r.rankName));
         desc += " from category " + res.category.categoryName;
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(desc)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -414,8 +427,9 @@ export class Rank extends RequiresRanks {
         } else {
             action = "left";
         }
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(`${message.author.toString()}, you ${action} ${role.name}`)
-            .setColor(this.bot.displayColor()))
+            .setColor(this.bot.displayColor())
+        ]})
     }
 }

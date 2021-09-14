@@ -20,7 +20,7 @@ export class Modules extends Command {
         let required = [];
         let enabled = [];
         let disabled = [];
-        for (const moduleName in this.bot.modules) {
+        for (const moduleName of Object.keys(this.bot.modules)) {
             const module: Module = this.bot.modules[moduleName];
             switch(module.state) {
                 case ModuleState.Required:
@@ -46,7 +46,7 @@ export class Modules extends Command {
             **Disabled Modules**
             ${listOrNone(disabled)}`)
             .setColor(this.bot.displayColor());
-        return message.channel.send(embed);
+        return message.channel.send({embeds: [embed]});
     }
 }
 

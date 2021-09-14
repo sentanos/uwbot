@@ -1,7 +1,7 @@
 import {
     Availability,
     Command,
-    CommandConfig, CommandsModule,
+    CommandConfig,
     PartialCommandConfig,
     Permission
 } from "../modules/commands";
@@ -24,15 +24,16 @@ class RequiresStream extends Command {
         return super.run(message, ...args);
     }
 
-    activateStream(message: Message, data: StreamData): Promise<Message> {
+    async activateStream(message: Message, data: StreamData): Promise<Message> {
         this.stream.addStreamer(data);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setColor(this.bot.displayColor())
             .setTitle("Streaming mode enabled")
             .setDescription("All messages you send through DMs (excluding commands) will be" +
                 " automatically sent as an anonymous message. All messages sent in the anonymous" +
                 " channel will be sent back to you through DMs. To end streaming mode use the" +
-                " command " + this.handler.commandTip("stream end")));
+                " command " + this.handler.commandTip("stream end"))
+        ]});
     }
 }
 
@@ -108,8 +109,9 @@ export class StreamEndCommand extends RequiresStream {
 
     async exec(message: Message): Promise<Message> {
         this.stream.removeStreamer(message.author);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setColor(this.bot.displayColor())
-            .setTitle("Streaming mode disabled"));
+            .setTitle("Streaming mode disabled")
+        ]});
     }
 }

@@ -42,8 +42,8 @@ export class DynoSucksModule extends Module {
         if (message.guild != null
             && message.content.startsWith("?")
             && message.content.length > 1
-            && this.bot.guild.member(dynoID) != null
-            && this.bot.guild.member(dynoID).presence.status === "offline") {
+            && this.bot.guild.members.cache.get(dynoID) != null
+            && this.bot.guild.members.cache.get(dynoID).presence.status === "offline") {
             // 🦀🦀🦀 dyno is dead 🦀🦀🦀
             if (this.lastActivationBlock == null
                 || timeDiff(new Date(), this.lastActivationBlock) > 60000) {

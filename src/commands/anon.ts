@@ -152,14 +152,14 @@ export class Timeout extends RequiresAnon {
         const arg = this.handler.getRawContent(message.content, 1);
         const duration = parseDuration(arg);
         const resp = await this.anon.doBlacklist(messageID, message.author, duration);
-        return message.channel.send(
+        return message.channel.send({embeds: [
             new MessageEmbed()
                 .setDescription(`Timed out \`${resp.anonAlias}\` (unique ID: ${resp.blacklistID}) ` +
                     `for ${formatDuration(duration)}`)
                 .setFooter("Timeout ends")
                 .setTimestamp(dateAfter(duration))
                 .setColor(this.bot.displayColor())
-        );
+        ]});
     }
 }
 
@@ -178,12 +178,12 @@ export class Blacklist extends RequiresAnon {
 
     async exec(message: Message, messageID: string): Promise<Message> {
         const blacklistResponse = await this.anon.doBlacklist(messageID, message.author);
-        return message.channel.send(
+        return message.channel.send({embeds: [
             new MessageEmbed()
                 .setDescription(`Blacklisted \`${blacklistResponse.anonAlias}\`. ` +
                     `ID: ${blacklistResponse.blacklistID}`)
                 .setColor(this.bot.displayColor())
-        )
+        ]})
     }
 }
 
@@ -202,11 +202,11 @@ export class Unblacklist extends RequiresAnon {
 
     async exec(message: Message, blacklistID: string): Promise<Message> {
         await this.anon.unblacklist(blacklistID, message.author);
-        return message.channel.send(
+        return message.channel.send({embeds: [
             new MessageEmbed()
                 .setDescription(`Unblacklisted \`${blacklistID}\``)
                 .setColor(this.bot.displayColor())
-        );
+        ]});
     }
 }
 
@@ -225,7 +225,7 @@ export class BlacklistedBy extends RequiresAnon {
     async exec(message: Message, blacklistID: string): Promise<Message> {
         const id: Snowflake | void = await this.anon.blacklistedBy(blacklistID);
         if (typeof id === "string") {
-            const member = await this.anon.guild.members.fetch(id);
+            const member = this.anon.guild.members.cache.get(id);
             if (member == null) {
                 return message.reply(id);
             } else {
@@ -295,8 +295,9 @@ export class SetColor extends RequiresAnon {
             throw new Error("SAFE: Invalid parameters")
         }
         anonUser.setColor(colorDecimal);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle("Color set")
-            .setColor(colorDecimal));
+            .setColor(colorDecimal)
+        ]});
     }
 }

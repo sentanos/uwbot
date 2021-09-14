@@ -165,11 +165,12 @@ export class AnonModule extends Module {
         this.audit = this.bot.getModule("audit") as AuditModule;
         this.scheduler = this.bot.getModule("scheduler") as SchedulerModule;
         this.usettings = this.bot.getModule("usersettings") as UserSettingsModule;
-        await this.bot.getChannelByName("anonymous").send(new MessageEmbed()
+        await this.bot.getChannelByName("anonymous").send({embeds: [new MessageEmbed()
             .setDescription("I was restarted due to updates so IDs have been reset (by the way" +
                 " I'm open source, check out my source code" +
                 " [here](https://github.com/sentanos/uwbot))")
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 
     public async event(name: string, payload: string): Promise<void> {
@@ -368,7 +369,7 @@ export class AnonModule extends Module {
     }
 
     private updateStream(userID: Snowflake, message: Message, delta: MessageEmbed): void {
-        if (message.channel.type === "text"
+        if (message.channel.type === "GUILD_TEXT"
             && this.bot.isEnabled("stream")) {
             (this.bot.getModule("stream") as StreamModule).broadcast(
                 message.channel as GuildChannel, delta,
@@ -468,8 +469,9 @@ export class AnonUser {
 
     private checkMuted() {
         if (this.anon.settingsHas("mutedRoles")) {
+            const member = this.anon.guild.members.cache.get(this.user.id);
             this.anon.settingsArr("mutedRoles").forEach((roleID) => {
-                if (this.anon.guild.member(this.user).roles.cache.has(roleID)) {
+                if (member.roles.cache.has(roleID)) {
                     throw new Error("SAFE: You cannot use anon while muted");
                 }
             });

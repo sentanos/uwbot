@@ -62,7 +62,7 @@ export class SuggestionsModule extends Module {
             });
             return false;
         } else {
-            let member = this.bot.guild.member(user);
+            let member : GuildMember = this.bot.guild.members.cache.get(user.id);
             if (!this.eligible(member)) {
                 dq.push({
                     user: user,
@@ -79,8 +79,8 @@ export class SuggestionsModule extends Module {
         const upReact = voting.reactions.cache.get(this.settings("upvoteEmoji"));
         const downReact = voting.reactions.cache.get(this.settings("downvoteEmoji"));
         await Promise.all([upReact.users.fetch(), downReact.users.fetch()]);
-        let up = new Set<string>(upReact.users.cache.keyArray());
-        let down = new Set<string>(downReact.users.cache.keyArray());
+        let up = new Set<string>(upReact.users.cache.keys());
+        let down = new Set<string>(downReact.users.cache.keys());
         let dq: Disqualification[] = [];
 
         for (const id of up) {
@@ -122,16 +122,17 @@ export class SuggestionsModule extends Module {
         const ids = this.settingsArr("resultsChannels");
         for (let i = 0; i < ids.length; i++) {
             const channel = this.bot.guild.channels.cache.get(ids[i]) as TextChannel;
-            let message = await channel.send(resultEmbed);
+            let message = await channel.send({embeds: [resultEmbed]});
             if (i === 0) {
                 results = message as Message;
             }
         }
-        await voting.edit(new MessageEmbed()
+        await voting.edit({embeds: [new MessageEmbed()
             .setDescription(`Voting has ended for the above suggestion with ${up.size} for and ` +
                 `${down.size} against. [Click here to see detailed results.](${results.url})`)
             .setAuthor(suggestion.author.tag, suggestion.author.avatarURL())
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 
     public async event(name: string, payload: string) {
@@ -159,12 +160,13 @@ export class SuggestionsModule extends Module {
             return;
         }
         const end = dateAfterSeconds(this.settingsN("voteInterval"));
-        const voting: Message = await message.channel.send(new MessageEmbed()
+        const voting: Message = await message.channel.send({embeds: [new MessageEmbed()
             .setDescription("Vote here for the above suggestion")
             .setFooter(`Voting will end on ${end.toLocaleString('en-US', 
                 {timeZone: "America/Los_Angeles"})}`)
             .setAuthor(message.author.tag, message.author.avatarURL())
-            .setColor(this.bot.displayColor())) as Message;
+            .setColor(this.bot.displayColor())
+        ]}) as Message;
         await this.scheduler.schedule("suggestions", end, "SUGGESTIONS_VOTECOMPLETE",
             JSON.stringify({
                 suggestion: message.id,

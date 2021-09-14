@@ -7,7 +7,7 @@ import {
     GuildMember,
     Message,
     MessageEmbed,
-    PermissionOverwriteOption,
+    PermissionOverwriteOptions,
     Role,
     RoleData,
     Snowflake,
@@ -30,13 +30,13 @@ export type PreviousPunishment = {
 const PunishmentRoles: {
     name: PunishmentRoleType,
     roleData: RoleData,
-    overwrites: PermissionOverwriteOption
+    overwrites: PermissionOverwriteOptions
 }[] = [
     {
         name: "mute",
         roleData: {
             name: "UW-Muted",
-            permissions: 0
+            permissions: BigInt(0)
         },
         overwrites: {
             ADD_REACTIONS: false,
@@ -48,7 +48,7 @@ const PunishmentRoles: {
         name: "quarantine",
         roleData: {
             name: "UW-Quarantined",
-            permissions: 0
+            permissions: BigInt(0)
         },
         overwrites: {
             VIEW_CHANNEL: false,
@@ -104,9 +104,7 @@ export class ModerationModule extends Module {
             let pRole = PunishmentRoles[i];
             let role = this.bot.guild.roles.cache.find(r => r.name === pRole.roleData.name);
             if (role == null) {
-                role = await this.bot.guild.roles.create({
-                    data: pRole.roleData
-                });
+                role = await this.bot.guild.roles.create(pRole.roleData);
             }
             this.roles.set(pRole.name, role);
         }
@@ -165,9 +163,9 @@ export class ModerationModule extends Module {
                 && (punishment.initiatorID !== punishment.userID
                     || (await this.usettings.get(targetID,
                     "moderation.disableselfnotification")) !== "true")) {
-                this.bot.guild.members.cache.get(targetID).send(new MessageEmbed()
+                this.bot.guild.members.cache.get(targetID).send({embeds: [new MessageEmbed()
                     .setDescription(this.settings("unpunishMessage").replace("%t", type))
-                    .setColor(this.bot.displayColor()))
+                    .setColor(this.bot.displayColor())]})
                     .catch((err) => {
                         console.error(`Failed to send un${type} message to ${targetID}: ${err.stack}`);
                     });
@@ -202,9 +200,9 @@ export class ModerationModule extends Module {
                 .replace("%d", formatDuration(duration))
                 .replace("%r", reason)
                 + `\n\n[Jump to ${type}](${commandMessage.url})`;
-            target.send(new MessageEmbed()
+            target.send({embeds: [new MessageEmbed()
                 .setDescription(message)
-                .setColor(this.bot.displayColor()))
+                .setColor(this.bot.displayColor())]})
                 .catch((err) => {
                     console.error(`Failed to send mute message to ${target.id}: ${err.stack}`);
                 });
@@ -301,7 +299,7 @@ export class ModerationModule extends Module {
     private async updatePermissions(channel: GuildChannel) {
         for (let i = 0; i < PunishmentRoles.length; i++) {
             let role = PunishmentRoles[i];
-            await channel.updateOverwrite(this.roles.get(role.name), role.overwrites);
+            await channel.permissionOverwrites.edit(this.roles.get(role.name), role.overwrites);
         }
     }
 
@@ -316,13 +314,13 @@ export class ModerationModule extends Module {
     }
 
     public async typingStart(channel: Channel, user: User) {
-        if (channel.type === "text") {
+        if (channel.type === "GUILD_TEXT") {
             await this.checkModeration(user.id);
         }
     }
 
     public async onMessage(message: Message) {
-        if (message.channel.type === "text") {
+        if (message.channel.type === "GUILD_TEXT") {
             await this.checkModeration(message.author.id);
         }
     }

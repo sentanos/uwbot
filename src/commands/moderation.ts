@@ -1,7 +1,7 @@
 import {
     Availability,
     Command,
-    CommandConfig, CommandsModule,
+    CommandConfig,
     PartialCommandConfig,
     Permission
 } from "../modules/commands";
@@ -63,7 +63,7 @@ class GenericPunish extends RequiresModeration {
         embed.setFooter(`${titlecase(this.type)} ends on`)
             .setTimestamp(dateAfter(response.duration))
             .setColor(this.bot.displayColor());
-        return message.channel.send(embed);
+        return message.channel.send({embeds: [embed]});
     }
 }
 
@@ -89,7 +89,7 @@ class GenericUnpunish extends RequiresModeration {
             embed.setDescription(`Un${this.type}d ${user.tag}. Their ${this.type}, created by ` +
                 `${initiator.tag}, had ${remaining} remaining.`)
         }
-        return message.channel.send(embed.setColor(this.bot.displayColor()));
+        return message.channel.send({embeds: [embed.setColor(this.bot.displayColor())]});
     }
 }
 
@@ -109,11 +109,12 @@ class GenericSelfPunish extends RequiresModeration {
         const duration = parseDuration(this.handler.getRawContent(message.content));
         await this.mod.punish(this.type, message.author, message.author, `Self ${this.type}`,
             duration, message);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription(`${message.author.tag} self ${this.type}d for ${formatDuration(duration)}`)
             .setFooter(`${titlecase(this.type)} ends on`)
             .setTimestamp(dateAfter(duration))
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 

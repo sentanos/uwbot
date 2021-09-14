@@ -41,10 +41,11 @@ export class Settings extends RequiresSettings {
     async exec(message: Message, namespace?: string): Promise<Message> {
         if (namespace == null) {
             const namespaces: string[] = this.settings.getNamespaces();
-            return message.channel.send(new MessageEmbed()
+            return message.channel.send({embeds: [new MessageEmbed()
                 .setTitle("Settings Namespaces")
                 .setDescription(listOrNone(namespaces))
-                .setColor(this.bot.displayColor()));
+                .setColor(this.bot.displayColor())
+            ]});
         } else {
             const settings: LocalSetting[] = this.settings.getInNamespace(namespace);
             const embed: MessageEmbed = new MessageEmbed()
@@ -63,7 +64,7 @@ export class Settings extends RequiresSettings {
                         (setting.optional ? "(Optional) " : "") + setting.description);
                 }
             }
-            return message.channel.send(embed);
+            return message.channel.send({embeds: [embed]});
         }
     }
 }
@@ -85,10 +86,11 @@ export class SettingsGet extends RequiresSettings {
             throw new Error("SAFE: Setting does not exist");
         }
         const value: string = this.settings.get(key);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(key)
             .setDescription(value === "" ? "_Not set_" : value)
-            .setColor(this.bot.displayColor()))
+            .setColor(this.bot.displayColor())
+        ]})
     }
 }
 
@@ -110,10 +112,11 @@ export class SettingsSet extends RequiresSettings {
         }
         value = value.replace(/<space>/g, " ");
         this.settings.set(key, value);
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(key)
             .setDescription(value)
-            .setColor(this.bot.displayColor()))
+            .setColor(this.bot.displayColor())
+        ]})
     }
 }
 
@@ -135,9 +138,10 @@ export class SettingsClear extends RequiresSettings {
             throw new Error("SAFE: You may only clear the value of an optional setting");
         }
         this.settings.set(key, "");
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(setting.key)
             .setDescription("_Cleared_")
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }

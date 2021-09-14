@@ -78,7 +78,7 @@ export class AuditModule extends Module {
             target: target != null ? target : (reason != null ? reason.location : null),
             detail: description
         });
-        await Promise.all([channel.send(embed), log]);
+        await Promise.all([channel.send({embeds: [embed]}), log]);
     }
 
     private static idenUser(user: User): string {

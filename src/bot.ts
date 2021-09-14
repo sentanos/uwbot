@@ -56,7 +56,7 @@ export class Bot {
 
     // Returns the display color of the client in the bot guild
     public displayColor(): ColorResolvable {
-        return this.guild.member(this.client.user).displayColor;
+        return this.guild.members.cache.get(this.client.user.id).displayColor;
     }
 
     // Returns a user based on their nickname/username/tag/userID
@@ -263,16 +263,16 @@ export class Bot {
         }, (filename: string) => {
                 return filename.endsWith(".js") && !filename.endsWith(".skip.js");
             });
-        for (const module in this.modules) {
+        for (const module of Object.values(this.modules)) {
             try {
-                await this.load(this.modules[module]);
+                await this.load(module);
             } catch (err) {
                 console.error(`Error loading module ${module}: ${err.stack}`);
             }
         }
-        for (const module in this.modules) {
+        for (const module of Object.values(this.modules)) {
             try {
-                await this.modules[module].modulesEnabled()
+                await module.modulesEnabled()
             } catch (err) {
                 console.error(`Error executing modulesEnabled for ${module}: ${err.stack}`)
             }

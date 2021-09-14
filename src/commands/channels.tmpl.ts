@@ -48,10 +48,10 @@ export class ChannelGetCommand extends ChannelCommand {
                 channels.push(id);
             }
         }
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle(this.listName)
             .setDescription(channels.join("\n"))
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())]});
     }
 }
 

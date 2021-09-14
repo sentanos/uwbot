@@ -458,12 +458,12 @@ export const sendAndMerge = async (channel: TextChannel | DMChannel, embed: Mess
         const proxy = new MessageEmbed(embed);
         proxy.setDescription(lastMessage.embeds[0].description + "\n" + embed.description);
         return {
-            message: await lastMessage.edit(proxy),
+            message: await lastMessage.edit({embeds: [proxy]}),
             merged: true
         };
     }
     return {
-        message: await channel.send(embed),
+        message: await channel.send({embeds: [embed]}),
         merged: false
     };
 };

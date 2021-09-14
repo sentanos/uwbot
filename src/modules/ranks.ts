@@ -83,7 +83,7 @@ export class RanksModule extends Module {
     // The role has no additional settings (no permissions, lowest position)
     public async createRank(name: string, category?: string): Promise<RankAndCategory> {
         const role: Role = await this.bot.guild.roles.create({
-            data: { name },
+            name: name,
             reason: "Rank module"
         });
         return await this.addRankFromRole(role, category);
@@ -391,7 +391,7 @@ export class RanksModule extends Module {
     //
     // Returns true if the rank was added to the user and false if it was removed from the user
     public async toggleRank(user: User, rank: string): Promise<boolean> {
-        const member: GuildMember | void = this.bot.guild.member(user);
+        const member: GuildMember | void = this.bot.guild.members.cache.get(user.id);
         if (member == null) {
             throw new Error("Guild member not found");
         }

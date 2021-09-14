@@ -1,6 +1,7 @@
 {
   "guild": "enter_guild_id_here",
   "client": {
-    "partials": ["MESSAGE", "REACTION"]
+    "partials": ["MESSAGE", "REACTION", "CHANNEL"],
+    "intents": 32767
   }
 }

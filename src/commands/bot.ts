@@ -1,8 +1,8 @@
 import {
     Availability,
     Command,
-    CommandAndAlias, CommandConfig,
-    CommandsModule, PartialCommandConfig,
+    CommandConfig,
+    PartialCommandConfig,
     Permission
 } from "../modules/commands";
 import {Message, MessageEmbed} from "discord.js";
@@ -25,9 +25,9 @@ class RequiresCommand extends Command {
                 && await (this.bot.getModule("whitelist") as WhitelistModule).
                     channels.has(sourceMessage.channel.id)
             )) {
-            return await sourceMessage.channel.send(newMessage);
+            return await sourceMessage.channel.send({embeds: [newMessage]});
         } else {
-            return (await Promise.all([sourceMessage.author.send(newMessage),
+            return (await Promise.all([sourceMessage.author.send({embeds: [newMessage]}),
                 sourceMessage.delete()]))[0];
         }
     }
@@ -138,10 +138,11 @@ export class Source extends Command {
     }
 
     async exec(message: Message): Promise<Message> {
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setDescription("My source code is [here](https://github.com/sentanos/uwbot). I" +
                 " welcome contributions from anyone!")
             .setFooter("Raw URL: https://github.com/sentanos/uwbot")
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }

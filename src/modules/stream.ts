@@ -63,7 +63,7 @@ export class StreamModule extends Module {
         return new MessageEmbed()
             .setAuthor(author.tag, author.avatarURL())
             .setDescription(newMessage.content)
-            .setColor(this.bot.guild.member(author).displayColor);
+            .setColor(this.bot.guild.members.cache.get(author.id).displayColor);
     }
 
     private async addMessage(message: Message | MessageEmbed, target: DMChannel): Promise<Message> {

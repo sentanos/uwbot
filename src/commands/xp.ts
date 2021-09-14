@@ -52,14 +52,15 @@ export class XPCommand extends RequiresXP {
         } else {
             user = message.author;
         }
-        const member: GuildMember | void = this.bot.guild.member(user);
+        const member: GuildMember | void = this.bot.guild.members.cache.get(user.id);
         const xp: XP = await this.xp.getXP(user.id);
-        return message.channel.send(embed.setAuthor(user.tag, user.avatarURL())
+        return message.channel.send({embeds: [embed.setAuthor(user.tag, user.avatarURL())
             .setThumbnail(user.avatarURL())
-            .addField("Total XP", xp, true)
-            .addField("Rolling XP", await this.xp.getRollingXP(user.id), true)
+            .addField("Total XP", xp.toString(), true)
+            .addField("Rolling XP", (await this.xp.getRollingXP(user.id)).toString(), true)
             .addField("Level", XPModule.levelSummary(xp))
-            .setColor(member != null ? member.displayColor : this.bot.displayColor()));
+            .setColor(member != null ? member.displayColor : this.bot.displayColor())
+        ]});
     }
 }
 
@@ -109,11 +110,12 @@ export class XPLeaderboard extends RequiresXP {
             users.push(`${!inGuild ? "~~" : ""}${i + 1 + (pageNum - 1) * pageSize}. ${name}: ` +
             `${row.totalXp} xp (Level ${XPModule.levelFromXp(row.totalXp)})${!inGuild ? "~~" : ""}`);
         }
-        return message.channel.send(new MessageEmbed()
+        return message.channel.send({embeds: [new MessageEmbed()
             .setTitle("XP Leaderboard")
             .setDescription(users.join("\n"))
             .setFooter("Page " + pageNum)
-            .setColor(this.bot.displayColor()));
+            .setColor(this.bot.displayColor())
+        ]});
     }
 }
 
@@ -188,12 +190,15 @@ export class XPHistory extends RequiresXP {
             from = new Date(new Date().getTime() - duration.asSeconds() * 1000);
         }
         const image = await this.xp.generateHistoryGraph(user.id, from, new Date());
-        return message.channel.send(new MessageEmbed()
-            .attachFiles([new MessageAttachment(image, "graph.png")])
-            .setImage("attachment://graph.png")
-            .setTitle(`XP History for ${user.tag}: ` +
-                (all ? "All Data" : ("Past " + titlecase(formatDuration(duration)))))
-            .setColor(this.bot.displayColor()));
+        return message.channel.send(
+            {
+                embeds: [new MessageEmbed()
+                    .setImage("attachment://graph.png")
+                    .setTitle(`XP History for ${user.tag}: ` +
+                        (all ? "All Data" : ("Past " + titlecase(formatDuration(duration)))))
+                    .setColor(this.bot.displayColor())],
+                files: [new MessageAttachment(image, "graph.png")]
+            });
     }
 }
 

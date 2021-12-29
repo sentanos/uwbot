@@ -17,6 +17,7 @@ import {compile} from "vega-lite";
 import {View, parse, loader, Warn} from "vega";
 import {Stream} from "stream";
 import {Canvas} from "canvas";
+import {Buffer} from "buffer";
 
 const XPGraphTemplate = require("../templates/xptime.json");
 
@@ -327,6 +328,93 @@ export class XPModule extends Module {
         })
         .initialize()
         .toCanvas()) as unknown as Canvas).createPNGStream();
+    }
+    
+    public async generateCSVBlob(userID: Snowflake, from?: Date, to?: Date): Promise<Stream> {
+        let template = XPGraphTemplate;
+        let opt: FindOptions = {
+            attributes: [[Sequelize.fn("strftime", "%Y-%m-%d", Sequelize.col("createdAt")), "date"],
+                [Sequelize.fn("sum", Sequelize.col("xp")), "sum"]],
+            group: ["date"],
+            where: {
+                userID: userID
+            },
+            order: Sequelize.literal("date ASC"),
+            raw: true
+        };
+        if (from != null && to != null) {
+            opt.where['createdAt'] = {
+                [Op.and]: {
+                    [Op.gte]: from,
+                    [Op.lte]: to
+                }
+            }
+        } else if (from != null) {
+            opt.where['createdAt'] = {
+                [Op.gte]: from
+            }
+        } else if (to != null) {
+            opt.where['createdAt'] = {
+                [Op.lte]: to
+            }
+        }
+        const values = await XpLogs.findAll(opt) as unknown as {
+            date: Date,
+            sum: number
+        }[];
+
+        let domain = [];
+
+        if (values.length > 0) {
+            domain.push(values[0].date);
+        } else if (from != null) {
+            domain.push(from.toString());
+        } else {
+            domain.push(new Date().toString());
+        }
+        if (to != null) {
+            domain.push(to.toString());
+        } else if (values.length > 0) {
+            domain.push(values[values.length - 1].date);
+        } else {
+            domain.push(new Date().toString());
+        }
+        template.encoding.x.scale.domain = domain;
+
+        let data: {
+            date: Date,
+            sum: number
+        }[] = [];
+
+        let end = new Date(domain[1]);
+        let i = 0;
+        let current: Date = values.length > 0 ? new Date(values[i].date) : null;
+        for (let d = new Date(domain[0]); d <= end; d.setDate(d.getDate() + 1)) {
+            if (current != null
+                && d.getFullYear() === current.getFullYear()
+                && d.getMonth() === current.getMonth()
+                && d.getDate() === current.getDate()) {
+                data.push({
+                    date: current,
+                    sum: values[i].sum
+                });
+                i++;
+                if (i < values.length) {
+                    current = new Date(values[i].date);
+                } else {
+                    current = null;
+                }
+            } else {
+                data.push({
+                    date: new Date(d),
+                    sum: 0
+                });
+            }
+        }
+
+        const csvTxt = data.map(x => x.data +","+ x.sum).join("\n");
+
+        return Buffer.from(csvTxt,"utf-8");
     }
 
     public async getXP(user: Snowflake): Promise<XP> {

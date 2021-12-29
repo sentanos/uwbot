@@ -196,4 +196,53 @@ export class XPHistory extends RequiresXP {
             .setColor(this.bot.displayColor()));
     }
 }
+export class XPHistoryCSV extends RequiresXP {
+    constructor(bot: Bot) {
+        super(bot, {
+            names: ["xp csv", "xp export", "xp data"],
+            usages: {
+                "Get your XP history in a CSV file for the past year": [],
+                "Get your XP history in a CSV file for the given time interval": ["interval/all"]
+            },
+            permission: Permission.VerifiedGuildMember,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message, personOrInterval?: string): Promise<Message> {
+        let user: User;
+        let duration = null;
+        let all = false;
+        if (personOrInterval != null) {
+            let resp: DurationResponse = null;
+            try {
+                resp = smartFindDuration(this.bot, message.content, true);
+            } finally {
+                user = message.author;
+            }
+            if (resp != null) {
+                duration = resp.duration;
+                all = resp.all;
+            }
+        } 
+        
+        user = message.author;
+
+        if (duration == null) {
+            duration = moment.duration(1, "year");
+        }
+
+        let from: Date = null;
+        if (!all) {
+            from = new Date(new Date().getTime() - duration.asSeconds() * 1000);
+        }
+        const csv = await this.xp.generateCSVBlob(user.id, from, new Date());
+        return message.channel.send(new MessageEmbed()
+            .attachFiles([new MessageAttachment(csv, "discordxpData.csv")])
+            .setTitle(`XP History for ${user.tag}: ` +
+                (all ? "All Data" : ("Past " + titlecase(formatDuration(duration)))))
+            .setColor(this.bot.displayColor()));
+    }
+}
+
 

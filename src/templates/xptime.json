@@ -8,8 +8,7 @@
       "field": "date",
       "type": "temporal",
       "scale": {
-        "type": "time",
-        "domain": []
+        "type": "time"
       },
       "axis": {
         "title": "Date"

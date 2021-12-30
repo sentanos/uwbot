@@ -7,20 +7,35 @@ import {
 } from "discord.js";
 import {Module} from "../module";
 import {Bot} from "../bot";
-import {PersistentChannelList, PersistentChannelListConfig, timeDiff} from "../util";
+import {
+    formatDate,
+    PersistentChannelList,
+    PersistentChannelListConfig,
+    timeDiff
+} from "../util";
 import {Xp} from "../database/models/xp";
-import {Sequelize, Op, FindOptions, Transaction} from "sequelize";
+import {FindOptions, Op, Sequelize, Transaction} from "sequelize";
 import {XpLogs} from "../database/models/xpLogs";
 import {Availability, Permission} from "./commands";
 import {SettingsConfig} from "./settings.skip";
 import {compile} from "vega-lite";
-import {View, parse, loader, Warn} from "vega";
+import {loader, parse, View, Warn} from "vega";
 import {Stream} from "stream";
 import {Canvas} from "canvas";
 
 const XPGraphTemplate = require("../templates/xptime.json");
 
 export type XP = number;
+
+type RawXPHistoryRecord = {
+    date: string,
+    sum: number
+}
+
+type XPHistoryRecord = {
+    date: Date,
+    sum: number
+};
 
 const settingsConfig: SettingsConfig = {
     blockInterval: {
@@ -234,8 +249,8 @@ export class XPModule extends Module {
         });
     }
 
-    public async generateHistoryGraph(userID: Snowflake, from?: Date, to?: Date): Promise<Stream> {
-        let template = XPGraphTemplate;
+    // Gets raw XP history from the database. Has gaps where no messages were sent.
+    private async getRawHistory(userID: Snowflake, from?: Date, to?: Date): Promise<RawXPHistoryRecord[]> {
         let opt: FindOptions = {
             attributes: [[Sequelize.fn("strftime", "%Y-%m-%d", Sequelize.col("createdAt")), "date"],
                 [Sequelize.fn("sum", Sequelize.col("xp")), "sum"]],
@@ -262,38 +277,17 @@ export class XPModule extends Module {
                 [Op.lte]: to
             }
         }
-        const values = await XpLogs.findAll(opt) as unknown as {
-            date: Date,
-            sum: number
-        }[];
+        return await XpLogs.findAll(opt) as unknown as RawXPHistoryRecord[];
+    }
 
-        let domain = [];
+    // Return XP history with date gaps filled in
+    private processHistory(values: RawXPHistoryRecord[], from: Date, to: Date): XPHistoryRecord[] {
+        const data: XPHistoryRecord[] = [];
 
-        if (values.length > 0) {
-            domain.push(values[0].date);
-        } else if (from != null) {
-            domain.push(from.toString());
-        } else {
-            domain.push(new Date().toString());
-        }
-        if (to != null) {
-            domain.push(to.toString());
-        } else if (values.length > 0) {
-            domain.push(values[values.length - 1].date);
-        } else {
-            domain.push(new Date().toString());
-        }
-        template.encoding.x.scale.domain = domain;
-
-        let data: {
-            date: Date,
-            sum: number
-        }[] = [];
-
-        let end = new Date(domain[1]);
+        let end = to;
         let i = 0;
-        let current: Date = values.length > 0 ? new Date(values[i].date) : null;
-        for (let d = new Date(domain[0]); d <= end; d.setDate(d.getDate() + 1)) {
+        let current: Date = values.length > 0 ? new Date(values[0].date) : null;
+        for (let d = new Date(from); d <= end; d.setDate(d.getDate() + 1)) {
             if (current != null
                 && d.getFullYear() === current.getFullYear()
                 && d.getMonth() === current.getMonth()
@@ -316,10 +310,48 @@ export class XPModule extends Module {
             }
         }
 
-        template.data = {
-            values: data
-        };
+        return data;
+    }
 
+    public async getHistory(userID: Snowflake, from?: Date, to?: Date): Promise<XPHistoryRecord[]> {
+        const values = await this.getRawHistory(userID, from, to);
+
+        let start: Date;
+        let end: Date;
+
+        if (values.length > 0) {
+            start = new Date(values[0].date);
+        } else if (from != null) {
+            start = from
+        } else {
+            start = new Date();
+        }
+
+        if (to != null) {
+            end = to;
+        } else if (values.length > 0) {
+            end = new Date(values[values.length - 1].date);
+        } else {
+            end = new Date();
+        }
+
+        return this.processHistory(values, start, end);
+    }
+
+    public async generateHistoryCsv(userID: Snowflake, from?: Date, to?: Date) : Promise<Buffer> {
+        let csv = "date,xp";
+        const values = await this.getHistory(userID, from, to);
+        for (const value of values) {
+            csv += `\n${formatDate(value.date)},${value.sum}`;
+        }
+        return Buffer.from(csv, "utf-8");
+    }
+
+    public async generateHistoryGraph(userID: Snowflake, from?: Date, to?: Date): Promise<Stream> {
+        let template = XPGraphTemplate;
+
+        const values = await this.getHistory(userID, from, to);
+        template.data = { values };
         const res = compile(template);
 
         return ((await new View(parse(res.spec), {

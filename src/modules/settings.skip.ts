@@ -82,8 +82,8 @@ export class SettingsModule extends Module {
     //     return namespaces;
     // }
 
-    public persistentGetInNamespace(namespace: string): Promise<Setting[]> {
-        return Setting.findAll({
+    public async persistentGetInNamespace(namespace: string): Promise<Setting[]> {
+        return await Setting.findAll({
             where: { namespace }
         });
     }

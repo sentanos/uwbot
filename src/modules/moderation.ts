@@ -173,8 +173,8 @@ export class ModerationModule extends Module {
         }
     }
 
-    public getPunishment(userID: Snowflake): Promise<Punishments | void> {
-        return Punishments.findByPk(userID);
+    public async getPunishment(userID: Snowflake): Promise<Punishments | void> {
+        return await Punishments.findByPk(userID);
     }
 
     public async checkModeration(userID: Snowflake): Promise<void> {

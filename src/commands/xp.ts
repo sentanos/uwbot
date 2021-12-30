@@ -140,6 +140,26 @@ export class XPUpdateAll extends RequiresXP {
     }
 }
 
+export class XPExport extends RequiresXP {
+    constructor(bot: Bot) {
+        super(bot, {
+            names: ["xp export"],
+            usages: {
+                "Export all of your XP history to a CSV file": [],
+            },
+            permission: Permission.VerifiedGuildMember,
+            availability: Availability.GuildOnly
+        });
+    }
+
+    async exec(message: Message): Promise<Message> {
+        const data = await this.xp.generateHistoryCsv(message.author.id, null, new Date());
+        return message.channel.send({
+            files: [new MessageAttachment(data, "data.csv")]
+        });
+    }
+}
+
 export class XPHistory extends RequiresXP {
     constructor(bot: Bot) {
         super(bot, {

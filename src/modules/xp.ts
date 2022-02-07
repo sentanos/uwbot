@@ -205,14 +205,20 @@ export class XPModule extends Module {
                 await notifyAdd.send({embeds: [new MessageEmbed()
                     .setDescription(member.user.toString() + " You are now a regular!")
                     .setColor(this.bot.displayColor())
-                ]});
+                ]})
+                    .catch((err) => {
+                        console.error(`Regular gained message failed: ${err.stack}`);
+                    });
             }
         } else if (!hasReward && canUpdateReward) {
             if (await this.removeReward(member) && notifyRemove != null) {
                 await notifyRemove.send({embeds: [new MessageEmbed()
                     .setDescription("You lost regular in the UW discord due to inactivity")
                     .setColor(this.bot.displayColor())
-                ]});
+                ]})
+                    .catch((err) => {
+                        console.error(`Regular lost message failed: ${err.stack}`);
+                    });
             }
         }
     }
@@ -488,7 +494,10 @@ export class XPModule extends Module {
                     }
                 }
             }
-            await Promise.all(rewardChecks);
+            await Promise.all(rewardChecks)
+                .catch((err) => {
+                    console.error(`Decay reward check error: ${err.stack}`);
+                });
         }
     }
 

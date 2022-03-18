@@ -11,7 +11,7 @@ import {
 import {Bot} from "./bot";
 import {ChannelAddCommand, ChannelGetCommand, ChannelRemoveCommand} from "./commands/channels.tmpl";
 import moment from 'moment-timezone';
-import {Duration} from "moment";
+import {Duration, Moment} from "moment";
 
 type unit =  {
     name: moment.unitOfTime.Base,
@@ -125,6 +125,10 @@ export const formatDate = (date: Date): string => {
     }
 
     return [year, month, day].join('-');
+}
+
+export const formatTime = (date: Moment): string => {
+    return date.format("YYYY-MM-D HH:mm:ss Z");
 }
 
 const tryDuration = (content: string, includeAll: boolean): {

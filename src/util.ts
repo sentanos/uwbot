@@ -128,7 +128,7 @@ export const formatDate = (date: Date): string => {
 }
 
 export const formatTime = (date: Moment): string => {
-    return date.format("YYYY-MM-D HH:mm:ss Z");
+    return date.format("YYYY-MM-DD HH:mm:ss Z");
 }
 
 const tryDuration = (content: string, includeAll: boolean): {

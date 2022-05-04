@@ -9,12 +9,17 @@ import moment, {Duration} from "moment";
 import {PunishmentRoleType} from "./moderation";
 
 const settingsConfig: SettingsConfig = {
-    channel: {
-        description: "The channel audit logs are output to"
+    auditChannel: {
+        description: "The channel ID general audit logs (anon blacklist, mutes, etc.) are output to"
     },
-    logDeletes: {
-        description: "If true, log message deletions to the audit channel. Otherwise do not.",
-        default: "false"
+    deletesChannel: {
+        description: "If set, message deletions are logged to this channel. Otherwise they are" +
+            " not.",
+        optional: true
+    },
+    editsChannel: {
+        description: "If set, message edits are logged to this channel. Otherwise they are not.",
+        optional: true
     }
 };
 
@@ -31,8 +36,11 @@ export class AuditModule extends Module {
     }
 
     public async initialize(): Promise<void> {
-        if (this.settings("logDeletes") === "true") {
+        if (this.settingsHas("deletesChannel")) {
             this.listen("messageDelete", this.onDelete.bind(this));
+        }
+        if (this.settingsHas("editsChannel")) {
+            this.listen("messageUpdate", this.onUpdate.bind(this));
         }
     }
 
@@ -57,10 +65,9 @@ export class AuditModule extends Module {
     // target (optional): If applicable, the target of the action.
     // color (optional): A custom color for the log embed. Default is display color.
     // fields (optional): Additional embed fields
-    public async log(action: string, title: string, description: string, author?: User,
-                     reason?: Reason, target?: string, color?: number, mmm?: Message,
+    public async log(channel: TextChannel, action: string, title: string, description: string,
+                     author?: User, reason?: Reason, target?: string, color?: number,
                      ...fields: {name: string, value: string}[]) : Promise<void> {
-        const channel = this.bot.guild.channels.cache.get(this.settings("channel")) as TextChannel;
         const embed = new MessageEmbed();
         embed.setTitle(title);
         if (reason != null && reason.content) {
@@ -100,14 +107,20 @@ export class AuditModule extends Module {
         return `\`(ID: ${message.id})\``;
     }
 
+    private getChannel(setting: string): TextChannel {
+        return this.bot.guild.channels.cache.get(this.settings(setting)) as TextChannel
+    }
+
     public async pinLog(user: User, message: Message, type: "pin" | "unpin"): Promise<void> {
-        return this.log("PIN_MESSAGE", "Message " + (type === "pin" ? "Pinned" : "Unpinned"),
+        return this.log(this.getChannel("auditChannel"), "PIN_MESSAGE",
+            "Message " + (type === "pin" ? "Pinned" : "Unpinned"),
              `User ${AuditModule.idenUser(user)} ${type}ned the following message ` +
             `${AuditModule.idenMessage(message)}:`, user, AuditModule.messageToReason(message));
     }
 
     public async pinChangeLog(user: User, other: User, message: Message): Promise<void> {
-        return this.log("PIN_OWNER_CHANGE", "Message Pin Change",
+        return this.log(this.getChannel("auditChannel"), "PIN_OWNER_CHANGE",
+            "Message Pin Change",
             `User ${AuditModule.idenUser(user)} removed their pin reaction from the ` +
             `message ${AuditModule.idenMessage(message)} below, which makes user ` +
             `${AuditModule.idenUser(other)} the new owner of the pin.`, user,
@@ -118,7 +131,7 @@ export class AuditModule extends Module {
         const alias: AnonAlias = record.alias;
         const message: Message = await (this.bot.guild.channels.cache.get(record.channelID) as TextChannel)
             .messages.fetch(record.messageID);
-        return this.log("BLACKLIST", "Anon User Blacklisted",
+        return this.log(this.getChannel("auditChannel"), "BLACKLIST", "Anon User Blacklisted",
             `User ${AuditModule.idenUser(user)} blacklisted anon **${alias}** ` +
             `\`(blacklist ID: ${blacklistID})\` ` +
             `because of the following message ${AuditModule.idenMessage(message)}:`,
@@ -129,7 +142,7 @@ export class AuditModule extends Module {
         const alias: AnonAlias = record.alias;
         const message: Message = await (this.bot.guild.channels.cache.get(record.channelID) as TextChannel)
             .messages.fetch(record.messageID);
-        return this.log("TIMEOUT", "Anon User Timed Out",
+        return this.log(this.getChannel("auditChannel"), "TIMEOUT", "Anon User Timed Out",
             `User ${AuditModule.idenUser(user)} timed out anon **${alias}** ` +
             `\`(blacklist ID: ${blacklistID})\` ` +
             `for ${formatDuration(duration)} because of the following message ` +
@@ -139,7 +152,7 @@ export class AuditModule extends Module {
 
     public async genericPunishment(type: PunishmentRoleType, moderator: User, target: User,
                                    reason: string, moderationMessage: Message, duration: Duration) {
-        return this.log(type.toUpperCase(), `User ${titlecase(type)}d`,
+        return this.log(this.getChannel("auditChannel"), type.toUpperCase(), `User ${titlecase(type)}d`,
             `Moderator ${AuditModule.idenUser(moderator)} ${type}d user ` +
             `${AuditModule.idenUser(target)} for ${formatDuration(duration)} for the following reason:`,
             moderator,
@@ -149,20 +162,20 @@ export class AuditModule extends Module {
 
     public async genericUnpunishment(type: PunishmentRoleType, moderator: User, target: User,
                                      moderationMessage: Message) {
-        return this.log(`UN${type.toUpperCase()}`, `User Un${type}d`,
+        return this.log(this.getChannel("auditChannel"), `UN${type.toUpperCase()}`, `User Un${type}d`,
             `Moderator ${AuditModule.idenUser(moderator)} un${type}d user ` +
             AuditModule.idenUser(target), moderator,
             {location: moderationMessage.url, jumpType: "action", embeds: []}, target.id, 16711680)
     }
 
     public async unblacklist(user: User, blacklistID: string) {
-        return this.log("UNBLACKLIST", "Anon User Unblacklisted", `User ` +
-            `${AuditModule.idenUser(user)} unblacklisted the anon user with blacklist ID ` +
+        return this.log(this.getChannel("auditChannel"), "UNBLACKLIST",
+            "Anon User Unblacklisted", `User ${AuditModule.idenUser(user)} ` +
+            `unblacklisted the anon user with blacklist ID ` +
             `\`${blacklistID}\`.`, user, null, blacklistID);
     }
 
     public async onDelete(message: Message) {
-        console.log(message);
         let channel = "an unknown channel";
         try {
             channel = `#${this.bot.guild.channels.cache.get(message.channelId).name}`;
@@ -182,7 +195,42 @@ export class AuditModule extends Module {
             reason = AuditModule.messageToReason(message);
             reason.location = null;
         }
-        return this.log("DELETE", "Message Deleted", description, message.author, reason,
-            message.id, 16711680);
+        return this.log(this.getChannel("deletesChannel"), "DELETE", "Message Deleted",
+            description, message.author, reason, message.id, 16711680);
+    }
+
+    public async onUpdate(oldMessage: Message, newMessage: Message) {
+        if (newMessage.author.bot) {
+            // Don't track bot message edits
+            return
+        }
+        let channel = "an unknown channel";
+        try {
+            channel = `#${this.bot.guild.channels.cache.get(newMessage.channelId).name}`;
+        } catch (e) {}
+        let description = `Message ${AuditModule.idenMessage(newMessage)} created on ` +
+            `${formatTime(moment(newMessage.createdTimestamp))} in ${channel} ` +
+            `(ID: ${newMessage.channelId}) was edited.`;
+        let oldContent = "Message content is unavailable because the message was too old.";
+        if (!oldMessage.partial) {
+            let content;
+            if (oldMessage.embeds.length > 0) {
+                oldContent = "An embed containing:";
+                content = oldMessage.embeds[0].description;
+            } else {
+                oldContent = ""
+                content = oldMessage.content
+            }
+            oldContent += `\n\`\`\`${content}\`\`\``
+        }
+        let newContent = `\`\`\`${newMessage.content}\`\`\``
+        const reason: Reason = {
+            location: newMessage.url,
+            jumpType: "message",
+            embeds: []
+        }
+        return this.log(this.getChannel("editsChannel"), "EDIT", "Message Edited",
+            description, newMessage.author, reason, newMessage.id, null,
+            {name: "Old Message", value: oldContent}, {name: "New Message", value: newContent})
     }
 }

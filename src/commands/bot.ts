@@ -6,9 +6,10 @@ import {
     Permission
 } from "../modules/commands";
 import {Message, MessageEmbed} from "discord.js";
-import {alphabetical} from "../util";
+import {alphabetical, formatTime} from "../util";
 import {Bot} from "../bot";
 import {WhitelistModule} from "../modules/whitelist";
+import moment from "moment-timezone";
 
 class RequiresCommand extends Command {
     constructor(bot: Bot, config: PartialCommandConfig) {
@@ -48,7 +49,7 @@ export class Ping extends Command {
     }
 
     async exec(message: Message): Promise<Message> {
-        return message.channel.send("pong " + new Date());
+        return message.channel.send("pong " + formatTime(moment()));
     }
 }
 

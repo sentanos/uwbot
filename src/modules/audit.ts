@@ -96,7 +96,8 @@ export class AuditModule extends Module {
                 ((reason != null && reason.location != null) ? reason.location : null),
             detail: description
         });
-        await Promise.all([channel.send({embeds: [embed, ...(reason ? reason.embeds : [])]}), log]);
+        const embeds = [embed, ...(reason ? reason.embeds : [])];
+        await Promise.all([channel.send({embeds: embeds.slice(0, 10)}), log]);
     }
 
     private static idenUser(user: User): string {
@@ -176,8 +177,8 @@ export class AuditModule extends Module {
     }
 
     public async onDelete(message: Message) {
-        if (message.channelId === this.settings("auditChannel")) {
-            // Don't track audit channel deletions
+        if (message.channelId === this.settings("deletesChannel")) {
+            // Don't track delete channel deletions
             return;
         }
         let channel = "an unknown channel";

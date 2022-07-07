@@ -176,6 +176,10 @@ export class AuditModule extends Module {
     }
 
     public async onDelete(message: Message) {
+        if (message.channelId === this.settings("auditChannel")) {
+            // Don't track audit channel deletions
+            return;
+        }
         let channel = "an unknown channel";
         try {
             channel = `#${this.bot.guild.channels.cache.get(message.channelId).name}`;

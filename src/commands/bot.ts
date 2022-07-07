@@ -48,7 +48,7 @@ export class Ping extends Command {
     }
 
     async exec(message: Message): Promise<Message> {
-        return message.channel.send("pong");
+        return message.channel.send("pong " + new Date());
     }
 }
 

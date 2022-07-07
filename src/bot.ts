@@ -241,6 +241,8 @@ export class Bot {
     // Unlike disable, can be used on required modules
     public async reload(module: Module): Promise<void> {
         await module.unload();
+        // TODO: Fix settingsHas not being set properly
+        // await this.checkSettings(module);
         await module.initialize();
         for (let i = 0; i < module.dependents.length; i++) {
             const dependent: string = module.dependents[i];

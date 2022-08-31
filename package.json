@@ -16,7 +16,7 @@
     "cron": "^1.7.1",
     "discord.js": "^13.1.0",
     "moment": "^2.29.4",
-    "moment-timezone": "^0.5.27",
+    "moment-timezone": "^0.5.35",
     "sequelize": "^6.21.2",
     "sqlite3": "^4.2.0",
     "uuid": "^3.3.3",
